@@ -12,7 +12,7 @@ const scene = new Scene($("stage"));
 
 function render(): void {
   renderBadge($("stateBadge"), $("opId"), state);
-  renderActions($("actions"), state.laneState, state.reason);
+  renderActions($("actions"), state);
   renderSensors($("sensors"), state);
   renderIntegrations($("integrations"), state);
   renderTimeline($("timeline"), state);

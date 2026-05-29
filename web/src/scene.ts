@@ -5,6 +5,7 @@ const LANE_B = 200;
 const ECLUSA = 140;
 const EXIT = 140;
 const slots = [220, 140, 60];
+const VEHICLE_EMOJI: Record<string, string> = { car: "🚗", truck: "🚚", rig: "🚛", motorcycle: "🏍️" };
 
 interface SideState {
   cars: HTMLDivElement[];
@@ -90,6 +91,11 @@ export class Scene {
       this.camA.classList.remove("live");
       this.camB.classList.remove("live");
       this.camX.classList.remove("live");
+    } else if (msg.topic === "command.received") {
+      const ev = (msg.payload as { event?: { type?: string; plate?: { vehicleType?: string } } }).event;
+      if (ev?.type === "plateRead" && ev.plate?.vehicleType) this.setActiveEmoji(ev.plate.vehicleType);
+    } else if (msg.topic === "maneuver") {
+      this.reverseActive();
     } else if (msg.topic === "lane.state") {
       this.onState(String(p.state));
     }
@@ -131,6 +137,23 @@ export class Scene {
         }
       }
       this.activeSide = null;
+    }
+  }
+
+  private setActiveEmoji(vehicleType: string): void {
+    const car = (this.activeSide === "B" ? this.B : this.A).active;
+    if (car) car.textContent = VEHICLE_EMOJI[vehicleType] ?? "🚗";
+  }
+
+  private reverseActive(): void {
+    const st = this.activeSide === "B" ? this.B : this.A;
+    const y = this.activeSide === "B" ? LANE_B : LANE_A;
+    if (st.active) {
+      st.active.style.left = "60px";
+      st.active.style.top = `${y}px`;
+      setTimeout(() => {
+        if (st.active) st.active.style.opacity = "0";
+      }, 800);
     }
   }
 
