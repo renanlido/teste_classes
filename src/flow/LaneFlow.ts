@@ -70,6 +70,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
       if (gen !== this.watchdogGen) return;
       void this.dispatch({ type: "timeout" });
     }, ms);
+    this.deps.bus?.publish("watchdog.arm", { ms });
   }
 
   clearWatchdog(): void {
@@ -77,6 +78,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
     if (this.watchdog) {
       clearTimeout(this.watchdog);
       this.watchdog = null;
+      this.deps.bus?.publish("watchdog.clear", {});
     }
   }
 
@@ -86,6 +88,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
 
   private async runOnEnter(next: LaneState): Promise<void> {
     this.state = next;
+    this.deps.bus?.publish("lane.state", { state: next.name, operationId: this.operation?.id ?? null });
     this.pendingFail = null;
     try {
       await next.onEnter(this);
