@@ -20,7 +20,7 @@ export class Operation {
   }
 
   get plate(): Plate | undefined {
-    return this.plates[0];
+    return [...this.plates].sort((a, b) => b.confidence - a.confidence)[0];
   }
 
   endOperation(): void {

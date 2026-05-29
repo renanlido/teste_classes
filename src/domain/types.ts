@@ -1,8 +1,13 @@
 export type Side = "A" | "B";
 
+export type PlatePosition = "front" | "rear";
+export type VehicleUnit = "tractor" | "trailer";
+
 export interface Plate {
   value: string;
   confidence: number;
+  position?: PlatePosition;
+  unit?: VehicleUnit;
 }
 
 export interface Person {
