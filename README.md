@@ -71,6 +71,25 @@ flowchart TB
 a máquina de estados (o *como* a operação progride). O `flow` usa o `domain`; o `domain` não conhece
 o `flow`.
 
+```mermaid
+flowchart TB
+  CTRL["LaneController — adapter (event.type → use case)"]
+  UC["use-cases (intenções)<br/>StartOperation · CorrectPlate · ApproveRelease · CancelOperation · ResetLane · IngestLaneSignal"]
+  FLOW["LaneFlow — process manager (stateful) + states/"]
+  DS["domain services (puros) — ValidationService · EntryQueueService"]
+  ENT["entidades — Operation · Gate · Lane · Plate · Person"]
+  PORTS["ports + emulações — CommandGate · Alpr · Facial · Backend · EventBus"]
+  CTRL --> UC --> FLOW
+  FLOW --> DS
+  FLOW --> ENT
+  FLOW --> PORTS
+  DS --> ENT
+```
+
+Distinção: **adapter** (sem regra) → **use case** (uma intenção) → **process manager** (`LaneFlow`,
+stateful) ≠ **domain service** (puro, stateless). Cada seta é "depende de"; nada aponta de volta pro
+adapter/use case.
+
 ---
 
 ## 3. Máquina de estados (flow)
@@ -157,6 +176,28 @@ sequenceDiagram
   U->>API: endOperation, carLeft
   L->>BUS: operation.finalized, lane.state → Idle
   SSE-->>U: carro sai, volta a Idle
+```
+
+### Intervenção — sempre resolúvel
+
+Quando a validação reprova, a lane vai a `Intervention`. O operador tem três saídas (nunca trava):
+
+```mermaid
+sequenceDiagram
+  participant U as Operador (Browser)
+  participant L as LaneFlow
+  Note over L: Validation reprova → Intervention (publica reason)
+  alt Corrigir placa (das fotos / registro)
+    U->>L: correctPlate { value }
+    L->>L: push placa "corrected" (conf 1) → Validation
+    L-->>U: placa no registro → ReleaseExit (segue p/ saída)
+  else Liberar (override)
+    U->>L: operatorApprove → ReleaseExit
+  else Cancelar → manobra (ré)
+    U->>L: operatorCancel → Maneuver
+    Note over L: fecha as outras cancelas, abre só a do lado
+    U->>L: carReversed → Finalize → Idle
+  end
 ```
 
 ---
