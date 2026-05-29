@@ -69,3 +69,19 @@ test("CarLeaving carLeft -> Finalize -> Idle", async () => {
   assert.equal(flow.getState(), "Idle");
   assert.equal(flow.operation, null);
 });
+
+test("slow validation transitions exactly once to ReleaseExit", async () => {
+  const g = gate();
+  const d = {
+    gates: { A: new Gate(g), B: new Gate(g), exit: new Gate(g) },
+    alpr: { startCapture() {}, stop() {} },
+    facial: { start() {}, stop() {} },
+    backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
+    bus: { publish() {}, subscribe() {} },
+    validation: { async evaluate() { await new Promise((r) => setTimeout(r, 80)); return { ok: true }; } },
+  } as unknown as FlowDeps;
+  const flow = new LaneFlow(cfg(), d);
+  flow.operation = new Operation("A");
+  await flow.start(new Validation());
+  assert.equal(flow.getState(), "ReleaseExit");
+});

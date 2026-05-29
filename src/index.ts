@@ -19,9 +19,8 @@ function buildLane(id: string, name: string): Lane {
     alpr: { rearA: "cA", rearB: "cB", frontExit: "cS" },
     timeouts: { gateOpenMs: 200, carInsideMs: 2000, plateMs: 2000, backendMs: 500, exitMs: 2000 },
   };
-  const gate = new FakeGate();
   const deps: FlowDeps = {
-    gates: { A: new Gate(gate), B: new Gate(gate), exit: new Gate(gate) },
+    gates: { A: new Gate(new FakeGate()), B: new Gate(new FakeGate()), exit: new Gate(new FakeGate()) },
     alpr: new FakeAlpr(),
     facial: new FakeFacial(),
     backend: new FakeBackendRecintos({

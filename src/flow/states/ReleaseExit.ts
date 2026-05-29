@@ -7,6 +7,7 @@ export class ReleaseExit extends LaneStateBase {
   readonly name = "ReleaseExit";
 
   async onEnter(flow: LaneFlowApi): Promise<void> {
+    flow.deps.alpr.startCapture(flow.cfg.alpr.frontExit);
     flow.armWatchdog(flow.cfg.timeouts.exitMs);
     await flow.deps.gates.exit.open();
   }

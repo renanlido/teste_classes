@@ -15,6 +15,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
 
   private state: LaneState | null = null;
   private watchdog: ReturnType<typeof setTimeout> | null = null;
+  private watchdogGen = 0;
   private pendingFail: unknown = null;
 
   constructor(
@@ -64,12 +65,15 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
 
   armWatchdog(ms: number): void {
     this.clearWatchdog();
+    const gen = ++this.watchdogGen;
     this.watchdog = setTimeout(() => {
+      if (gen !== this.watchdogGen) return;
       void this.dispatch({ type: "timeout" });
     }, ms);
   }
 
   clearWatchdog(): void {
+    this.watchdogGen++;
     if (this.watchdog) {
       clearTimeout(this.watchdog);
       this.watchdog = null;

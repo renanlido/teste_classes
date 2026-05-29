@@ -10,6 +10,8 @@ export class Idle extends LaneStateBase {
   readonly name = "Idle";
 
   async onEnter(flow: LaneFlowApi): Promise<void> {
+    flow.deps.alpr.stop();
+    flow.deps.facial.stop();
     flow.operation = null;
     await flow.deps.gates.A.close();
     await flow.deps.gates.B.close();
