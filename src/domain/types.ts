@@ -1,27 +1,27 @@
-export type Lado = "A" | "B";
+export type Side = "A" | "B";
 
 export interface Plate {
-  valor: string;
-  confianca: number;
+  value: string;
+  confidence: number;
 }
 
-export interface Pessoa {
+export interface Person {
   id: string;
-  nome: string;
+  name: string;
 }
 
-export interface Agendamento {
-  valido: boolean;
+export interface Booking {
+  valid: boolean;
 }
 
 export interface SevResult {
   ok: boolean;
 }
 
-export interface Sensors {
+export interface Sensor {
   name: string;
   type: "startOperation" | "endOperation";
   value: string;
-  clp: string;
+  plc: string;
   id: string;
 }

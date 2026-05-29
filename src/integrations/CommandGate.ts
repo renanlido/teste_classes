@@ -1,5 +1,5 @@
 export interface CommandGate {
-  abreCancela(id: string): Promise<{ type: "success" | "failure"; message: string }>;
-  fechaCancela(id: string): Promise<boolean>;
-  consultaEstadoCancela(id: string): Promise<"aberto" | "fechado">;
+  openGate(id: string): Promise<{ type: "success" | "failure"; message: string }>;
+  closeGate(id: string): Promise<boolean>;
+  queryGateState(id: string): Promise<"open" | "closed">;
 }
