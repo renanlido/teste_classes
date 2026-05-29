@@ -9,6 +9,7 @@ export class SseHub {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     });
+    res.write(": \n\n");
     this.clients.add(res);
     res.on("close", () => {
       this.clients.delete(res);
