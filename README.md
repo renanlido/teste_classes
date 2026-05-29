@@ -48,19 +48,19 @@ Saída esperada termina em `carLeft -> state: Idle`.
 
 ### 2. Front em tempo real (recomendado)
 
-Sobe o servidor da API (porta 8787) e o front Vite (porta 5173) juntos:
+Sobe o servidor da API (porta 8787) e o front Vite (porta 5180) juntos:
 
 ```bash
 npm run front
 ```
 
-Abra **http://localhost:5173**. O Vite faz proxy de `/api/*` para o servidor Node.
+Abra **http://localhost:5180**. O Vite faz proxy de `/api/*` para o servidor Node.
 
 Se preferir dois terminais separados:
 
 ```bash
 npm run server   # API + SSE em http://localhost:8787
-npm run web       # front em http://localhost:5173
+npm run web       # front em http://localhost:5180
 ```
 
 #### O que dá pra fazer na tela
