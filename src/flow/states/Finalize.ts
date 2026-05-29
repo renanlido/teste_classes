@@ -1,5 +1,4 @@
 import { LaneStateBase, type LaneFlowApi } from "../LaneStateBase.js";
-import { Idle } from "./Idle.js";
 
 export class Finalize extends LaneStateBase {
   readonly name = "Finalize";
@@ -14,6 +13,6 @@ export class Finalize extends LaneStateBase {
         durationMs: flow.operation.operationTime(),
       });
     }
-    await flow.transitionTo(new Idle());
+    await flow.transitionTo(flow.topology.initialState());
   }
 }

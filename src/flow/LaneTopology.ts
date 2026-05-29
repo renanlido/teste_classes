@@ -2,6 +2,7 @@ import type { LaneState, LaneFlowApi } from "./LaneStateBase.js";
 import type { LaneConfig } from "./LaneConfig.js";
 import type { Gate } from "../domain/Gate.js";
 import { Idle } from "./states/Idle.js";
+import { IdleSingle } from "./states/IdleSingle.js";
 
 export abstract class LaneTopology {
   abstract readonly name: string;
@@ -19,8 +20,19 @@ export class TwoEntriesOneExit extends LaneTopology {
   }
 }
 
+export class OneEntryOneExit extends LaneTopology {
+  readonly name = "one-entry-one-exit";
+  initialState(): LaneState {
+    return new IdleSingle();
+  }
+  entryGate(flow: LaneFlowApi): Gate {
+    return flow.deps.gates.A;
+  }
+}
+
 const TOPOLOGIES: Record<string, () => LaneTopology> = {
   "two-entries-one-exit": () => new TwoEntriesOneExit(),
+  "one-entry-one-exit": () => new OneEntryOneExit(),
 };
 
 export function createTopology(cfg: LaneConfig): LaneTopology {

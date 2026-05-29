@@ -1,6 +1,5 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
-import { Idle } from "./Idle.js";
 
 export class Failure extends LaneStateBase {
   readonly name = "Failure";
@@ -18,7 +17,7 @@ export class Failure extends LaneStateBase {
   }
 
   handle(ev: FlowEvent, flow: LaneFlowApi): LaneState | void {
-    if (ev.type === "manualReset") return new Idle();
+    if (ev.type === "manualReset") return flow.topology.initialState();
     this.ignore(flow, ev);
   }
 

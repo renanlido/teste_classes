@@ -1,7 +1,6 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
 import { Capture } from "./Capture.js";
-import { Idle } from "./Idle.js";
 
 export class CarEntering extends LaneStateBase {
   readonly name = "CarEntering";
@@ -15,7 +14,7 @@ export class CarEntering extends LaneStateBase {
 
   handle(ev: FlowEvent, flow: LaneFlowApi): LaneState | void {
     if (ev.type === "carInside") return new Capture();
-    if (ev.type === "timeout") return new Idle();
+    if (ev.type === "timeout") return flow.topology.initialState();
     this.ignore(flow, ev);
   }
 }
