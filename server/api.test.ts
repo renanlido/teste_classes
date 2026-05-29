@@ -84,3 +84,15 @@ test("GET /api/stream responds as event-stream", async () => {
     controller.abort();
   });
 });
+
+test("stream flushes an initial comment before any event", async () => {
+  await withServer(async (base) => {
+    const controller = new AbortController();
+    const res = await fetch(`${base}/api/stream`, { signal: controller.signal });
+    const reader = res.body!.getReader();
+    const { value } = await reader.read();
+    const text = new TextDecoder().decode(value);
+    assert.equal(text.includes(":"), true);
+    controller.abort();
+  });
+});

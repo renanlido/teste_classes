@@ -134,8 +134,4 @@ export class Scene {
     }
   }
 
-  resetQueues(): void {
-    this.fillQueue("A");
-    this.fillQueue("B");
-  }
 }

@@ -13,10 +13,13 @@ export async function getSnapshot(): Promise<{ state: string; operationId: strin
   return (await res.json()) as { state: string; operationId: string | null };
 }
 
-export function openStream(onMessage: (msg: TelemetryMsg) => void): EventSource {
+export function openStream(onMessage: (msg: TelemetryMsg) => void, onOpen?: () => void): EventSource {
   const es = new EventSource("/api/stream");
   es.onmessage = (e) => {
     onMessage(JSON.parse(e.data) as TelemetryMsg);
   };
+  if (onOpen) {
+    es.onopen = () => onOpen();
+  }
   return es;
 }

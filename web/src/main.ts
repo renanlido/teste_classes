@@ -20,15 +20,19 @@ function render(): void {
 renderControls($("controls"));
 render();
 
-getSnapshot()
-  .then((snap) => {
-    state = reduce(state, { topic: "lane.state", payload: snap, ts: Date.now() });
-    render();
-  })
-  .catch(() => undefined);
+function resync(): void {
+  getSnapshot()
+    .then((snap) => {
+      state = reduce(state, { topic: "lane.state", payload: snap, ts: Date.now() });
+      render();
+    })
+    .catch(() => undefined);
+}
+
+resync();
 
 openStream((msg) => {
   state = reduce(state, msg);
   scene.apply(msg);
   render();
-});
+}, resync);

@@ -45,9 +45,11 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
         s.reason = null;
       }
       break;
-    case "gate.open":
-      s.gates[p.gate as "A" | "B" | "exit"] = "open";
+    case "gate.open": {
+      const r = p.result as { type?: string } | undefined;
+      if (!r || r.type === "success") s.gates[p.gate as "A" | "B" | "exit"] = "open";
       break;
+    }
     case "gate.close":
       s.gates[p.gate as "A" | "B" | "exit"] = "closed";
       break;
@@ -109,6 +111,8 @@ function describe(msg: TelemetryMsg): string {
       return `intervention: ${String(p.reason)}`;
     case "lane.failure":
       return `failure: ${String(p.reason)}`;
+    case "operation.finalized":
+      return `finalized op ${String(p.id)} (${String(p.durationMs)}ms)`;
     default:
       return msg.topic;
   }
