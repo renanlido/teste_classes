@@ -26,11 +26,15 @@ export function renderSensors(host: HTMLElement, s: UiState): void {
 }
 
 export function renderIntegrations(host: HTMLElement, s: UiState): void {
+  const placa = s.plate ? `${s.plate.value} (${s.plate.confidence.toFixed(2)})` : "—";
+  const pessoa = s.person ? `${s.person.name} (${s.person.id})` : "—";
+  const peso = s.heavy ? "pesado" : "—";
   host.innerHTML =
-    "<h4>Integrações</h4>" +
-    row("ALPR rear A", dot(s.alpr.rearA)) +
-    row("ALPR rear B", dot(s.alpr.rearB)) +
-    row("ALPR front", dot(s.alpr.front)) +
+    "<h4>Veículo & Integrações</h4>" +
+    row("placa", placa) +
+    row("pessoa", pessoa) +
+    row("peso", peso) +
+    row(`${dot(s.alpr.rearA || s.alpr.rearB || s.alpr.front)} ALPR`, s.alpr.front ? "frontal" : s.alpr.rearB ? "rear B" : s.alpr.rearA ? "rear A" : "—") +
     row("Facial", dot(s.facial.active)) +
     row("booking", dot(s.rules.booking, true)) +
     row("plate registered", dot(s.rules.plateRegistered, true)) +

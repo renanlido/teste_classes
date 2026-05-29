@@ -7,6 +7,9 @@ export interface UiState {
   alpr: { rearA: boolean; rearB: boolean; front: boolean };
   facial: { active: boolean };
   rules: { booking?: boolean; plateRegistered?: boolean; sev?: boolean };
+  plate: { value: string; confidence: number } | null;
+  person: { id: string; name: string } | null;
+  heavy: boolean;
   watchdog: { armed: boolean; ms: number | null };
   reason: string | null;
   timeline: { ts: number; topic: string; text: string }[];
@@ -20,6 +23,9 @@ export function initialState(): UiState {
     alpr: { rearA: false, rearB: false, front: false },
     facial: { active: false },
     rules: {},
+    plate: null,
+    person: null,
+    heavy: false,
     watchdog: { armed: false, ms: null },
     reason: null,
     timeline: [],
@@ -43,8 +49,27 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
       if (s.laneState === "Idle") {
         s.rules = {};
         s.reason = null;
+        s.plate = null;
+        s.person = null;
+        s.heavy = false;
       }
       break;
+    case "command.received": {
+      const ev = p.event as {
+        type: string;
+        plate?: { value: string; confidence: number };
+        person?: { id: string; name: string };
+        heavy?: boolean;
+      };
+      if (ev.type === "plateRead" && ev.plate) {
+        if (!s.plate || ev.plate.confidence >= s.plate.confidence) s.plate = ev.plate;
+      } else if (ev.type === "personDetected" && ev.person) {
+        s.person = ev.person;
+      } else if (ev.type === "weightMeasured") {
+        s.heavy = Boolean(ev.heavy);
+      }
+      break;
+    }
     case "gate.open": {
       const r = p.result as { type?: string } | undefined;
       if (!r || r.type === "success") s.gates[p.gate as "A" | "B" | "exit"] = "open";
