@@ -14,11 +14,12 @@ export class Maneuver extends LaneStateBase {
       const opposite = side === "B" ? flow.deps.gates.A : flow.deps.gates.B;
       await opposite.close();
       await gate.open();
-    } else {
-      await flow.deps.gates.A.close();
-      await flow.deps.gates.B.close();
-      await flow.deps.gates.exit.open();
+      flow.deps.bus.publish("maneuver", { mode, side });
+      return;
     }
+    await flow.deps.gates.A.close();
+    await flow.deps.gates.B.close();
+    await flow.deps.gates.exit.open();
     flow.deps.bus.publish("maneuver", { mode, side });
   }
 

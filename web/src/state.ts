@@ -85,7 +85,8 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
         s.plates = [...s.plates, ev.plate];
         s.plate = highestPlate(s.plates);
         s.vehicleType = s.plate?.vehicleType ?? null;
-      } else if (ev.type === "personDetected" && ev.person) {
+      }
+      if (ev.type === "personDetected" && ev.person) {
         s.person = { id: ev.person.id, name: ev.person.name };
         s.registry = ev.person.registeredPlates ?? [];
       }
@@ -118,8 +119,8 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
       const result = p.result as { valid?: boolean; ok?: boolean } | boolean;
       const passed = typeof result === "boolean" ? result : (result.valid ?? result.ok ?? false);
       if (method === "booking") s.rules.booking = passed;
-      else if (method === "plateRegistered") s.rules.plateRegistered = passed;
-      else if (method === "sev") s.rules.sev = passed;
+      if (method === "plateRegistered") s.rules.plateRegistered = passed;
+      if (method === "sev") s.rules.sev = passed;
       break;
     }
     case "watchdog.arm":

@@ -122,14 +122,20 @@ export function renderActions(host: HTMLElement, s: UiState): void {
     const cancel = mkBtn("✗ Cancelar → ré", () => void sendCommand({ type: "operatorCancel" }));
     cancel.className = "btn act danger";
     host.append(document.createElement("br"), approve, cancel);
-  } else if (s.laneState === "Maneuver") {
+    return;
+  }
+
+  if (s.laneState === "Maneuver") {
     const title = document.createElement("div");
     title.className = "act-title";
     title.textContent = `Modo manobra — ré pelo lado ${s.maneuver?.side ?? "A"}`;
     const done = mkBtn("✓ Confirmar saída de ré", () => void sendCommand({ type: "carReversed" }));
     done.className = "btn act ok";
     host.append(title, done);
-  } else if (s.laneState === "Failure") {
+    return;
+  }
+
+  if (s.laneState === "Failure") {
     const title = document.createElement("div");
     title.className = "act-title";
     title.textContent = `Falha técnica${s.reason ? ` — ${s.reason}` : ""}`;

@@ -76,27 +76,49 @@ export class Scene {
     if (msg.topic === "gate.open" && (p.gate === "A" || p.gate === "B")) {
       this.activeSide = p.gate;
       (p.gate === "A" ? this.gateA : this.gateB).classList.add("open");
-    } else if (msg.topic === "gate.close" && (p.gate === "A" || p.gate === "B")) {
+      return;
+    }
+    if (msg.topic === "gate.close" && (p.gate === "A" || p.gate === "B")) {
       (p.gate === "A" ? this.gateA : this.gateB).classList.remove("open");
-    } else if (msg.topic === "gate.open" && p.gate === "exit") {
+      return;
+    }
+    if (msg.topic === "gate.open" && p.gate === "exit") {
       this.gateExit.classList.add("open");
-    } else if (msg.topic === "gate.close" && p.gate === "exit") {
+      return;
+    }
+    if (msg.topic === "gate.close" && p.gate === "exit") {
       this.gateExit.classList.remove("open");
-    } else if (msg.topic === "alpr.capture") {
+      return;
+    }
+    if (msg.topic === "alpr.capture") {
       const cam = String(p.camera).toLowerCase();
-      if (cam.includes("reara")) this.camA.classList.add("live");
-      else if (cam.includes("rearb")) this.camB.classList.add("live");
-      else if (cam.includes("front")) this.camX.classList.add("live");
-    } else if (msg.topic === "alpr.stop") {
+      if (cam.includes("reara")) {
+        this.camA.classList.add("live");
+        return;
+      }
+      if (cam.includes("rearb")) {
+        this.camB.classList.add("live");
+        return;
+      }
+      if (cam.includes("front")) this.camX.classList.add("live");
+      return;
+    }
+    if (msg.topic === "alpr.stop") {
       this.camA.classList.remove("live");
       this.camB.classList.remove("live");
       this.camX.classList.remove("live");
-    } else if (msg.topic === "command.received") {
+      return;
+    }
+    if (msg.topic === "command.received") {
       const ev = (msg.payload as { event?: { type?: string; plate?: { vehicleType?: string } } }).event;
       if (ev?.type === "plateRead" && ev.plate?.vehicleType) this.setActiveEmoji(ev.plate.vehicleType);
-    } else if (msg.topic === "maneuver") {
+      return;
+    }
+    if (msg.topic === "maneuver") {
       this.reverseActive();
-    } else if (msg.topic === "lane.state") {
+      return;
+    }
+    if (msg.topic === "lane.state") {
       this.onState(String(p.state));
     }
   }
@@ -119,13 +141,17 @@ export class Scene {
           }
         }, 400);
       }
-    } else if (state === "ReleaseExit") {
+      return;
+    }
+    if (state === "ReleaseExit") {
       const car = (this.activeSide === "B" ? this.B : this.A).active;
       if (car) {
         car.style.left = "600px";
         car.style.top = `${EXIT}px`;
       }
-    } else if (state === "CarLeaving") {
+      return;
+    }
+    if (state === "CarLeaving") {
       const car = (this.activeSide === "B" ? this.B : this.A).active;
       if (car) {
         car.style.left = "670px";
@@ -135,7 +161,9 @@ export class Scene {
           car.style.opacity = "0";
         }, 700);
       }
-    } else if (state === "Idle") {
+      return;
+    }
+    if (state === "Idle") {
       for (const s of [this.A, this.B]) {
         if (s.active) {
           s.active.remove();

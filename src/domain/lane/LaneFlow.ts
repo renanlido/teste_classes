@@ -107,8 +107,14 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
 
   private record(ev: FlowEvent): void {
     if (!this.operation) return;
-    if (ev.type === "plateRead") this.operation.plates.push(ev.plate);
-    else if (ev.type === "personDetected") this.operation.person = ev.person;
-    else if (ev.type === "weightMeasured") this.operation.heavy = ev.heavy;
+    if (ev.type === "plateRead") {
+      this.operation.plates.push(ev.plate);
+      return;
+    }
+    if (ev.type === "personDetected") {
+      this.operation.person = ev.person;
+      return;
+    }
+    if (ev.type === "weightMeasured") this.operation.heavy = ev.heavy;
   }
 }
