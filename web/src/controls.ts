@@ -1,4 +1,4 @@
-import { sendCommand } from "./api.js";
+import { sendCommand, getSnapshot } from "./api.js";
 import { scenarios } from "./scenarios.js";
 import type { LaneEvent } from "./types.js";
 
@@ -18,8 +18,18 @@ const CONTROL_EVENTS: { label: string; event: LaneEvent }[] = [
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+async function waitForIdle(timeoutMs = 12000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const snap = await getSnapshot();
+    if (snap.state === "Idle") return;
+    await sleep(300);
+  }
+}
+
 async function runScenario(events: LaneEvent[]): Promise<void> {
   for (const ev of events) {
+    if (ev.type === "startOperation") await waitForIdle();
     await sendCommand(ev);
     await sleep(700);
   }
