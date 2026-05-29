@@ -1,5 +1,5 @@
-import type { FlowEvent, DeviceSignal } from "./flow/events.js";
-import { DEVICE_SIGNAL_TYPES } from "./flow/events.js";
+import type { FlowEvent, DeviceSignal } from "./domain/lane/events.js";
+import { DEVICE_SIGNAL_TYPES } from "./domain/lane/events.js";
 import { StartOperation } from "./application/use-cases/StartOperation.js";
 import { CorrectPlate } from "./application/use-cases/CorrectPlate.js";
 import { ApproveRelease } from "./application/use-cases/ApproveRelease.js";

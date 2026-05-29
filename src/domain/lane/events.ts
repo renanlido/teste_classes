@@ -1,10 +1,10 @@
-import type { Side, Plate, Person } from "../domain/types.js";
-import type { Gate } from "../domain/Gate.js";
-import type { AlprPort } from "../integrations/AlprPort.js";
-import type { FacialPort } from "../integrations/FacialPort.js";
-import type { BackendPort } from "../integrations/BackendPort.js";
-import type { EventBus } from "../integrations/EventBus.js";
-import type { ValidationService } from "../domain/ValidationService.js";
+import type { Side, Plate, Person } from "../types.js";
+import type { Gate } from "./Gate.js";
+import type { AlprPort } from "../../integrations/AlprPort.js";
+import type { FacialPort } from "../../integrations/FacialPort.js";
+import type { BackendPort } from "../../integrations/BackendPort.js";
+import type { EventBus } from "../../integrations/EventBus.js";
+import type { ValidationService } from "../ValidationService.js";
 
 export type FlowEvent =
   | { type: "startOperation"; side: Side }

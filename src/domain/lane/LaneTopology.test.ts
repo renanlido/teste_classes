@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { TwoEntriesOneExit, createTopology } from "./LaneTopology.js";
-import { Gate } from "../domain/Gate.js";
-import { FakeGate } from "../integrations/FakeGate.js";
-import { Operation } from "../domain/Operation.js";
+import { Gate } from "./Gate.js";
+import { FakeGate } from "../../integrations/FakeGate.js";
+import { Operation } from "./Operation.js";
 import type { LaneConfig } from "./LaneConfig.js";
 import type { LaneFlowApi } from "./LaneStateBase.js";
 

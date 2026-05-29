@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Side, Plate, Person, Booking, SevResult, VehicleType } from "./types.js";
+import type { Side, Plate, Person, Booking, SevResult, VehicleType } from "../types.js";
 
 export class Operation {
   readonly id: string;

@@ -1,9 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
-import type { Lane } from "../src/domain/Lane.js";
+import type { Lane } from "../src/domain/lane/Lane.js";
 import type { LaneController } from "../src/LaneController.js";
 import type { EventBus } from "../src/integrations/EventBus.js";
 import type { SseHub } from "./sse.js";
-import type { FlowEvent } from "../src/flow/events.js";
+import type { FlowEvent } from "../src/domain/lane/events.js";
 
 export interface ApiContext {
   laneId: string;

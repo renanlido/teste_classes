@@ -1,10 +1,10 @@
 import { LaneBase } from "./LaneBase.js";
-import { LaneFlow } from "../flow/LaneFlow.js";
-import { createTopology } from "../flow/LaneTopology.js";
-import { Failure } from "../flow/states/Failure.js";
-import type { LaneConfig } from "../flow/LaneConfig.js";
-import type { FlowDeps, DeviceSignal } from "../flow/events.js";
-import type { Side } from "./types.js";
+import { LaneFlow } from "./LaneFlow.js";
+import { createTopology } from "./LaneTopology.js";
+import { Failure } from "./states/Failure.js";
+import type { LaneConfig } from "./LaneConfig.js";
+import type { FlowDeps, DeviceSignal } from "./events.js";
+import type { Side } from "../types.js";
 
 export class Lane extends LaneBase {
   private constructor(

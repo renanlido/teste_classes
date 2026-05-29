@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Gate } from "./Gate.js";
-import type { CommandGate } from "../integrations/CommandGate.js";
+import type { CommandGate } from "../../integrations/CommandGate.js";
 
 function gateOk(stateSeq: ("open" | "closed")[]): CommandGate {
   let i = 0;

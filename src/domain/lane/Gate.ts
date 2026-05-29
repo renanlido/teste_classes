@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CommandGate } from "../integrations/CommandGate.js";
+import type { CommandGate } from "../../integrations/CommandGate.js";
 
 const MAX_ATTEMPTS = 3;
 

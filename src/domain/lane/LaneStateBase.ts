@@ -1,6 +1,6 @@
 import type { FlowEvent, FlowDeps } from "./events.js";
 import type { LaneConfig } from "./LaneConfig.js";
-import type { Operation } from "../domain/Operation.js";
+import type { Operation } from "./Operation.js";
 import type { LaneTopology } from "./LaneTopology.js";
 
 export interface LaneFlowApi {

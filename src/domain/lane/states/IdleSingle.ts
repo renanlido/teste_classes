@@ -1,6 +1,6 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
-import { Operation } from "../../domain/Operation.js";
+import { Operation } from "../Operation.js";
 import { OpenEntry } from "./OpenEntry.js";
 
 export class IdleSingle extends LaneStateBase {

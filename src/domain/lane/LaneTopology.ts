@@ -1,6 +1,6 @@
 import type { LaneState, LaneFlowApi } from "./LaneStateBase.js";
 import type { LaneConfig } from "./LaneConfig.js";
-import type { Gate } from "../domain/Gate.js";
+import type { Gate } from "./Gate.js";
 import { Idle } from "./states/Idle.js";
 import { IdleSingle } from "./states/IdleSingle.js";
 

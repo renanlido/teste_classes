@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { Intervention } from "./Intervention.js";
 import { Failure } from "./Failure.js";
 import { LaneFlow } from "../LaneFlow.js";
-import { Operation } from "../../domain/Operation.js";
-import { Gate } from "../../domain/Gate.js";
+import { Operation } from "../Operation.js";
+import { Gate } from "../Gate.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
-import type { CommandGate } from "../../integrations/CommandGate.js";
+import type { CommandGate } from "../../../integrations/CommandGate.js";
 
 function cfg(): LaneConfig {
   return {

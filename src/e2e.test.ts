@@ -1,15 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Lane } from "./domain/Lane.js";
+import { Lane } from "./domain/lane/Lane.js";
 import { ValidationService } from "./domain/ValidationService.js";
-import { Gate } from "./domain/Gate.js";
+import { Gate } from "./domain/lane/Gate.js";
 import { FakeGate } from "./integrations/FakeGate.js";
 import { FakeAlpr } from "./integrations/FakeAlpr.js";
 import { FakeFacial } from "./integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "./integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "./integrations/InMemoryEventBus.js";
-import type { LaneConfig } from "./flow/LaneConfig.js";
-import type { FlowDeps } from "./flow/events.js";
+import type { LaneConfig } from "./domain/lane/LaneConfig.js";
+import type { FlowDeps } from "./domain/lane/events.js";
 
 function build(facialEnabled: boolean): { lane: Lane; bus: InMemoryEventBus } {
   const cfg: LaneConfig = {

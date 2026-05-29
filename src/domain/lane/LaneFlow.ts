@@ -2,7 +2,7 @@ import type { FlowEvent, FlowDeps } from "./events.js";
 import { DATA_EVENTS } from "./events.js";
 import type { LaneConfig } from "./LaneConfig.js";
 import type { LaneState, LaneFlowApi } from "./LaneStateBase.js";
-import type { Operation } from "../domain/Operation.js";
+import type { Operation } from "./Operation.js";
 import { TwoEntriesOneExit } from "./LaneTopology.js";
 import type { LaneTopology } from "./LaneTopology.js";
 

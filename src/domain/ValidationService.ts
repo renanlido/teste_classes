@@ -1,6 +1,6 @@
-import type { Operation } from "./Operation.js";
+import type { Operation } from "./lane/Operation.js";
 import type { BackendPort } from "../integrations/BackendPort.js";
-import type { LaneConfig } from "../flow/LaneConfig.js";
+import type { LaneConfig } from "./lane/LaneConfig.js";
 
 export interface ValidationResult {
   ok: boolean;
