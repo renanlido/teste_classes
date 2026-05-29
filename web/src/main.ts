@@ -3,7 +3,7 @@ import { openStream, getSnapshot } from "./api.js";
 import { Scene } from "./scene.js";
 import { renderBadge, renderSensors, renderIntegrations } from "./panels.js";
 import { renderTimeline } from "./timeline.js";
-import { renderControls } from "./controls.js";
+import { renderControls, renderActions } from "./controls.js";
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 
@@ -12,6 +12,7 @@ const scene = new Scene($("stage"));
 
 function render(): void {
   renderBadge($("stateBadge"), $("opId"), state);
+  renderActions($("actions"), state.laneState, state.reason);
   renderSensors($("sensors"), state);
   renderIntegrations($("integrations"), state);
   renderTimeline($("timeline"), state);

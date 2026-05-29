@@ -73,6 +73,35 @@ export function renderControls(host: HTMLElement): void {
   host.appendChild(data);
 }
 
+export async function releaseCar(): Promise<void> {
+  await sendCommand({ type: "operatorApprove" });
+  await sleep(700);
+  await sendCommand({ type: "endOperation" });
+  await sleep(700);
+  await sendCommand({ type: "carLeft" });
+}
+
+export function renderActions(host: HTMLElement, laneState: string, reason: string | null): void {
+  host.innerHTML = "";
+  if (laneState === "Intervention") {
+    const title = document.createElement("div");
+    title.className = "act-title";
+    title.textContent = `Intervenção necessária${reason ? ` — ${reason}` : ""}`;
+    const approve = mkBtn("✓ Liberar carro", () => void releaseCar());
+    approve.className = "btn act ok";
+    const abort = mkBtn("✗ Abortar operação", () => void sendCommand({ type: "operatorAbort" }));
+    abort.className = "btn act danger";
+    host.append(title, approve, abort);
+  } else if (laneState === "Failure") {
+    const title = document.createElement("div");
+    title.className = "act-title";
+    title.textContent = `Falha técnica${reason ? ` — ${reason}` : ""}`;
+    const reset = mkBtn("⟲ Reset manual", () => void sendCommand({ type: "manualReset" }));
+    reset.className = "btn act";
+    host.append(title, reset);
+  }
+}
+
 function mkInput(placeholder: string, width: string): HTMLInputElement {
   const i = document.createElement("input");
   i.className = "inp";
