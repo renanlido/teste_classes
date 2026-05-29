@@ -5,6 +5,6 @@ export class CorrectPlate {
     if (!value || !value.trim()) {
       throw new Error("plate value required");
     }
-    await resolveLane(laneId).send({ type: "correctPlate", value: value.trim() });
+    await resolveLane(laneId).correctPlate(value.trim());
   }
 }

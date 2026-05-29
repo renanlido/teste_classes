@@ -36,7 +36,7 @@ function deps(): FlowDeps {
 
 test("command routes event to the lane by id", async () => {
   LaneRegistry.reset();
-  const lane = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps()));
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
   await lane.start();
   const ctrl = new LaneController();
   await ctrl.command("L1", { type: "startOperation", side: "A" });
@@ -47,4 +47,21 @@ test("command for missing lane throws", async () => {
   LaneRegistry.reset();
   const ctrl = new LaneController();
   await assert.rejects(() => ctrl.command("X", { type: "carInside" }), /lane not found/);
+});
+
+test("command operatorAbort from Intervention finalizes the operation", async () => {
+  LaneRegistry.reset();
+  const c = cfg();
+  c.facialEnabled = true;
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", c, deps()));
+  await lane.start();
+  const ctrl = new LaneController();
+  await ctrl.command("L1", { type: "startOperation", side: "A" });
+  await ctrl.command("L1", { type: "confirmQueue" });
+  await ctrl.command("L1", { type: "gateOpened" });
+  await ctrl.command("L1", { type: "carInside" });
+  await ctrl.command("L1", { type: "carAtTotem" });
+  assert.equal(lane.getState(), "Intervention");
+  await ctrl.command("L1", { type: "operatorAbort" });
+  assert.equal(lane.getState(), "Idle");
 });

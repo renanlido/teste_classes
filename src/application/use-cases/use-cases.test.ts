@@ -37,7 +37,7 @@ function deps(): FlowDeps {
 }
 async function freshLane(): Promise<Lane> {
   LaneRegistry.reset();
-  const lane = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps()));
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
   await lane.start();
   return lane;
 }

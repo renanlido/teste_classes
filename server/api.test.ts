@@ -40,7 +40,7 @@ function deps(bus: InMemoryEventBus): FlowDeps {
 async function withServer(fn: (base: string, ctx: ApiContext) => Promise<void>) {
   LaneRegistry.reset();
   const bus = new InMemoryEventBus();
-  const lane = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps(bus)));
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps(bus)));
   await lane.start();
   const ctx: ApiContext = { laneId: "L1", controller: new LaneController(), lane, hub: new SseHub(), bus };
   const server = createApiServer(ctx);

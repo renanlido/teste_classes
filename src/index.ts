@@ -31,7 +31,7 @@ function buildLane(id: string, name: string): Lane {
     bus: new InMemoryEventBus(),
     validation: new ValidationService(),
   };
-  return new Lane(id, name, cfg, deps);
+  return Lane.create(id, name, cfg, deps);
 }
 
 async function main(): Promise<void> {

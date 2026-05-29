@@ -37,3 +37,18 @@ export interface FlowDeps {
   bus: EventBus;
   validation: ValidationService;
 }
+
+export const DEVICE_SIGNAL_TYPES = [
+  "confirmQueue",
+  "gateOpened",
+  "carInside",
+  "carAtTotem",
+  "carLeft",
+  "carReversed",
+  "plateRead",
+  "personDetected",
+  "weightMeasured",
+  "endOperation",
+] as const;
+
+export type DeviceSignal = Extract<FlowEvent, { type: (typeof DEVICE_SIGNAL_TYPES)[number] }>;

@@ -3,28 +3,54 @@ import { LaneFlow } from "../flow/LaneFlow.js";
 import { createTopology } from "../flow/LaneTopology.js";
 import { Failure } from "../flow/states/Failure.js";
 import type { LaneConfig } from "../flow/LaneConfig.js";
-import type { FlowDeps, FlowEvent } from "../flow/events.js";
+import type { FlowDeps, DeviceSignal } from "../flow/events.js";
+import type { Side } from "./types.js";
 
 export class Lane extends LaneBase {
-  private readonly flow: LaneFlow;
-
-  constructor(
+  private constructor(
     readonly id: string,
     readonly name: string,
-    cfg: LaneConfig,
-    deps: FlowDeps,
+    private readonly flow: LaneFlow,
   ) {
     super();
-    this.flow = new LaneFlow(cfg, deps, createTopology(cfg));
-    this.flow.onFail = (reason) => new Failure(reason instanceof Error ? reason.message : String(reason));
+  }
+
+  static create(id: string, name: string, cfg: LaneConfig, deps: FlowDeps): Lane {
+    const flow = new LaneFlow(cfg, deps, createTopology(cfg));
+    flow.onFail = (reason) => new Failure(reason instanceof Error ? reason.message : String(reason));
+    return new Lane(id, name, flow);
   }
 
   async start(): Promise<void> {
     await this.flow.start();
   }
 
-  async send(ev: FlowEvent): Promise<void> {
-    await this.flow.dispatch(ev);
+  async startOperation(side: Side): Promise<void> {
+    await this.flow.dispatch({ type: "startOperation", side });
+  }
+
+  async correctPlate(value: string): Promise<void> {
+    await this.flow.dispatch({ type: "correctPlate", value });
+  }
+
+  async approve(): Promise<void> {
+    await this.flow.dispatch({ type: "operatorApprove" });
+  }
+
+  async cancel(): Promise<void> {
+    await this.flow.dispatch({ type: "operatorCancel" });
+  }
+
+  async abort(): Promise<void> {
+    await this.flow.dispatch({ type: "operatorAbort" });
+  }
+
+  async reset(): Promise<void> {
+    await this.flow.dispatch({ type: "manualReset" });
+  }
+
+  async signal(s: DeviceSignal): Promise<void> {
+    await this.flow.dispatch(s);
   }
 
   getState(): string {

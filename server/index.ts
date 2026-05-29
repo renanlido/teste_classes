@@ -76,7 +76,7 @@ export async function buildContext(): Promise<ApiContext> {
   LaneRegistry.reset();
   const bus = new InMemoryEventBus();
   const hub = new SseHub();
-  const lane = LaneRegistry.get(LANE_ID, () => new Lane(LANE_ID, "Lane 1", config(), buildDeps(bus)));
+  const lane = LaneRegistry.get(LANE_ID, () => Lane.create(LANE_ID, "Lane 1", config(), buildDeps(bus)));
   for (const topic of TOPICS) {
     bus.subscribe(topic, (payload) => hub.broadcast(topic, payload, Date.now()));
   }

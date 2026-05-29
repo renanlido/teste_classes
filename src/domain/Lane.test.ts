@@ -21,7 +21,6 @@ function cfg(): LaneConfig {
     timeouts: { gateOpenMs: 30, carInsideMs: 30, plateMs: 30, backendMs: 30, exitMs: 30 },
   };
 }
-
 function deps(): FlowDeps {
   const g = new FakeGate();
   return {
@@ -34,23 +33,31 @@ function deps(): FlowDeps {
   };
 }
 
-test("Lane starts in Idle", async () => {
-  const lane = new Lane("L1", "Lane 1", cfg(), deps());
+test("Lane.create starts in Idle", async () => {
+  const lane = Lane.create("L1", "Lane 1", cfg(), deps());
   await lane.start();
   assert.equal(lane.getState(), "Idle");
 });
 
-test("Lane processes startOperation", async () => {
-  const lane = new Lane("L1", "Lane 1", cfg(), deps());
+test("startOperation intention advances to WaitEntry", async () => {
+  const lane = Lane.create("L1", "Lane 1", cfg(), deps());
   await lane.start();
-  await lane.send({ type: "startOperation", side: "A" });
+  await lane.startOperation("A");
   assert.equal(lane.getState(), "WaitEntry");
+});
+
+test("signal forwards a device signal", async () => {
+  const lane = Lane.create("L1", "Lane 1", cfg(), deps());
+  await lane.start();
+  await lane.startOperation("A");
+  await lane.signal({ type: "confirmQueue" });
+  assert.equal(lane.getState(), "OpenEntry");
 });
 
 test("LaneRegistry returns the same instance per id", () => {
   LaneRegistry.reset();
-  const a = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps()));
-  const b = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps()));
+  const a = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
+  const b = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
   assert.equal(a, b);
 });
 
