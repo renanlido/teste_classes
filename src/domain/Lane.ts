@@ -1,11 +1,12 @@
 import { LaneBase } from "./LaneBase.js";
-import { LaneTwoEntriesOneExit } from "../flow/LaneTwoEntriesOneExit.js";
+import { LaneFlow } from "../flow/LaneFlow.js";
+import { createTopology } from "../flow/LaneTopology.js";
 import { Failure } from "../flow/states/Failure.js";
 import type { LaneConfig } from "../flow/LaneConfig.js";
 import type { FlowDeps, FlowEvent } from "../flow/events.js";
 
 export class Lane extends LaneBase {
-  private readonly flow: LaneTwoEntriesOneExit;
+  private readonly flow: LaneFlow;
 
   constructor(
     readonly id: string,
@@ -14,7 +15,7 @@ export class Lane extends LaneBase {
     deps: FlowDeps,
   ) {
     super();
-    this.flow = new LaneTwoEntriesOneExit(cfg, deps);
+    this.flow = new LaneFlow(cfg, deps, createTopology(cfg));
     this.flow.onFail = (reason) => new Failure(reason instanceof Error ? reason.message : String(reason));
   }
 

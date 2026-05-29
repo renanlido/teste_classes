@@ -3,6 +3,8 @@ import { DATA_EVENTS } from "./events.js";
 import type { LaneConfig } from "./LaneConfig.js";
 import type { LaneState, LaneFlowApi } from "./LaneStateBase.js";
 import type { Operation } from "../domain/Operation.js";
+import { TwoEntriesOneExit } from "./LaneTopology.js";
+import type { LaneTopology } from "./LaneTopology.js";
 
 export abstract class LaneFlowBase {
   abstract getFlow(): { state: string; operationId: string | null };
@@ -21,6 +23,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
   constructor(
     readonly cfg: LaneConfig,
     readonly deps: FlowDeps,
+    readonly topology: LaneTopology = new TwoEntriesOneExit(),
   ) {
     super();
     this.onFail = () => {
@@ -36,7 +39,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
     return { state: this.getState(), operationId: this.operation?.id ?? null };
   }
 
-  async start(initialState: LaneState): Promise<void> {
+  async start(initialState: LaneState = this.topology.initialState()): Promise<void> {
     await this.runOnEnter(initialState);
   }
 
