@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { Intervention } from "./Intervention.js";
 import { Maneuver } from "./Maneuver.js";
 import { LaneFlow } from "../LaneFlow.js";
-import { Operation } from "../../domain/Operation.js";
-import { Gate } from "../../domain/Gate.js";
-import { FakeGate } from "../../integrations/FakeGate.js";
+import { Operation } from "../Operation.js";
+import { Gate } from "../Gate.js";
+import { FakeGate } from "../../../integrations/FakeGate.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
-import type { CommandGate } from "../../integrations/CommandGate.js";
+import type { CommandGate } from "../../../integrations/CommandGate.js";
 
 function cfg(over: Partial<LaneConfig> = {}): LaneConfig {
   return {

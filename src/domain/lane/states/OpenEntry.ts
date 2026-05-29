@@ -6,7 +6,7 @@ export class OpenEntry extends LaneStateBase {
   readonly name = "OpenEntry";
 
   async onEnter(flow: LaneFlowApi): Promise<void> {
-    const gate = flow.operation?.side === "B" ? flow.deps.gates.B : flow.deps.gates.A;
+    const gate = flow.topology.entryGate(flow);
     flow.armWatchdog(flow.cfg.timeouts.gateOpenMs);
     await gate.open();
   }

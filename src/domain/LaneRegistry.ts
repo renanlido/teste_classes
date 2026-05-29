@@ -1,4 +1,4 @@
-import type { Lane } from "./Lane.js";
+import type { Lane } from "./lane/Lane.js";
 
 export class LaneRegistry {
   private static lanes = new Map<string, Lane>();

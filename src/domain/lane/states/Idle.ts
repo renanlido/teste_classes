@@ -1,7 +1,7 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
-import { Operation } from "../../domain/Operation.js";
-import { EntryQueueService } from "../../domain/EntryQueueService.js";
+import { Operation } from "../Operation.js";
+import { EntryQueueService } from "../../EntryQueueService.js";
 import { WaitEntry } from "./WaitEntry.js";
 
 const queue = new EntryQueueService();

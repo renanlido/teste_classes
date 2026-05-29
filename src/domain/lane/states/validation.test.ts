@@ -4,11 +4,11 @@ import { Validation } from "./Validation.js";
 import { ReleaseExit } from "./ReleaseExit.js";
 import { CarLeaving } from "./CarLeaving.js";
 import { LaneFlow } from "../LaneFlow.js";
-import { Operation } from "../../domain/Operation.js";
-import { Gate } from "../../domain/Gate.js";
+import { Operation } from "../Operation.js";
+import { Gate } from "../Gate.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
-import type { CommandGate } from "../../integrations/CommandGate.js";
+import type { CommandGate } from "../../../integrations/CommandGate.js";
 
 function cfg(): LaneConfig {
   return {

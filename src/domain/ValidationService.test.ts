@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ValidationService } from "./ValidationService.js";
-import { Operation } from "./Operation.js";
+import { Operation } from "./lane/Operation.js";
 import type { BackendPort } from "../integrations/BackendPort.js";
-import type { LaneConfig } from "../flow/LaneConfig.js";
+import type { LaneConfig } from "./lane/LaneConfig.js";
 
 function cfg(over: Partial<LaneConfig> = {}): LaneConfig {
   return {

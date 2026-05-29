@@ -1,16 +1,25 @@
-import type { FlowEvent } from "./flow/events.js";
+import type { FlowEvent, DeviceSignal } from "./domain/lane/events.js";
+import { DEVICE_SIGNAL_TYPES } from "./domain/lane/events.js";
 import { StartOperation } from "./application/use-cases/StartOperation.js";
 import { CorrectPlate } from "./application/use-cases/CorrectPlate.js";
 import { ApproveRelease } from "./application/use-cases/ApproveRelease.js";
 import { CancelOperation } from "./application/use-cases/CancelOperation.js";
+import { AbortOperation } from "./application/use-cases/AbortOperation.js";
 import { ResetLane } from "./application/use-cases/ResetLane.js";
 import { IngestLaneSignal } from "./application/use-cases/IngestLaneSignal.js";
+
+const DEVICE_SIGNALS = new Set<FlowEvent["type"]>(DEVICE_SIGNAL_TYPES);
+
+function isDeviceSignal(ev: FlowEvent): ev is DeviceSignal {
+  return DEVICE_SIGNALS.has(ev.type);
+}
 
 export class LaneController {
   private readonly startOperation = new StartOperation();
   private readonly correctPlate = new CorrectPlate();
   private readonly approveRelease = new ApproveRelease();
   private readonly cancelOperation = new CancelOperation();
+  private readonly abortOperation = new AbortOperation();
   private readonly resetLane = new ResetLane();
   private readonly ingestSignal = new IngestLaneSignal();
 
@@ -24,10 +33,15 @@ export class LaneController {
         return this.approveRelease.execute(laneId);
       case "operatorCancel":
         return this.cancelOperation.execute(laneId);
+      case "operatorAbort":
+        return this.abortOperation.execute(laneId);
       case "manualReset":
         return this.resetLane.execute(laneId);
       default:
-        return this.ingestSignal.execute(laneId, ev);
+        if (isDeviceSignal(ev)) {
+          return this.ingestSignal.execute(laneId, ev);
+        }
+        throw new Error(`unsupported command: ${ev.type}`);
     }
   }
 }

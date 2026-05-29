@@ -1,7 +1,7 @@
 import { resolveLane } from "../resolveLane.js";
 
-export class ResetLane {
+export class AbortOperation {
   async execute(laneId: string): Promise<void> {
-    await resolveLane(laneId).reset();
+    await resolveLane(laneId).abort();
   }
 }

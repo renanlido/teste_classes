@@ -5,11 +5,11 @@ import { WaitEntry } from "./WaitEntry.js";
 import { OpenEntry } from "./OpenEntry.js";
 import { CarEntering } from "./CarEntering.js";
 import { LaneFlow } from "../LaneFlow.js";
-import { Gate } from "../../domain/Gate.js";
-import { FakeGate } from "../../integrations/FakeGate.js";
+import { Gate } from "../Gate.js";
+import { FakeGate } from "../../../integrations/FakeGate.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
-import type { CommandGate } from "../../integrations/CommandGate.js";
+import type { CommandGate } from "../../../integrations/CommandGate.js";
 
 function cfg(): LaneConfig {
   return {

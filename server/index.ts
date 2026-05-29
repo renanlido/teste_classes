@@ -1,8 +1,8 @@
-import { Lane } from "../src/domain/Lane.js";
+import { Lane } from "../src/domain/lane/Lane.js";
 import { LaneRegistry } from "../src/domain/LaneRegistry.js";
 import { LaneController } from "../src/LaneController.js";
 import { ValidationService } from "../src/domain/ValidationService.js";
-import { Gate } from "../src/domain/Gate.js";
+import { Gate } from "../src/domain/lane/Gate.js";
 import { FakeGate } from "../src/integrations/FakeGate.js";
 import { FakeAlpr } from "../src/integrations/FakeAlpr.js";
 import { FakeFacial } from "../src/integrations/FakeFacial.js";
@@ -14,8 +14,8 @@ import { ObservingFacial } from "./observing/ObservingFacial.js";
 import { ObservingBackend } from "./observing/ObservingBackend.js";
 import { SseHub } from "./sse.js";
 import { createApiServer, type ApiContext } from "./api.js";
-import type { LaneConfig } from "../src/flow/LaneConfig.js";
-import type { FlowDeps } from "../src/flow/events.js";
+import type { LaneConfig } from "../src/domain/lane/LaneConfig.js";
+import type { FlowDeps } from "../src/domain/lane/events.js";
 
 export const TOPICS = [
   "command.received",
@@ -76,7 +76,7 @@ export async function buildContext(): Promise<ApiContext> {
   LaneRegistry.reset();
   const bus = new InMemoryEventBus();
   const hub = new SseHub();
-  const lane = LaneRegistry.get(LANE_ID, () => new Lane(LANE_ID, "Lane 1", config(), buildDeps(bus)));
+  const lane = LaneRegistry.get(LANE_ID, () => Lane.create(LANE_ID, "Lane 1", config(), buildDeps(bus)));
   for (const topic of TOPICS) {
     bus.subscribe(topic, (payload) => hub.broadcast(topic, payload, Date.now()));
   }

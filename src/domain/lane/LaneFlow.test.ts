@@ -4,7 +4,7 @@ import { LaneFlow, LaneFlowBase } from "./LaneFlow.js";
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "./LaneStateBase.js";
 import type { FlowEvent, FlowDeps } from "./events.js";
 import type { LaneConfig } from "./LaneConfig.js";
-import { Operation } from "../domain/Operation.js";
+import { Operation } from "./Operation.js";
 
 function cfg(): LaneConfig {
   return {

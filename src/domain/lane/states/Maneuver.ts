@@ -1,7 +1,6 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
 import { Finalize } from "./Finalize.js";
-import { Idle } from "./Idle.js";
 
 export class Maneuver extends LaneStateBase {
   readonly name = "Maneuver";
@@ -11,9 +10,9 @@ export class Maneuver extends LaneStateBase {
     const side = flow.operation?.side ?? "A";
     await flow.deps.gates.exit.close();
     if (mode === "reverse") {
+      const gate = flow.topology.entryGate(flow);
       const opposite = side === "B" ? flow.deps.gates.A : flow.deps.gates.B;
       await opposite.close();
-      const gate = side === "B" ? flow.deps.gates.B : flow.deps.gates.A;
       await gate.open();
     } else {
       await flow.deps.gates.A.close();
@@ -27,7 +26,7 @@ export class Maneuver extends LaneStateBase {
     const mode = flow.cfg.maneuverMode ?? "reverse";
     if (mode === "reverse" && ev.type === "carReversed") return new Finalize();
     if (mode === "forward" && ev.type === "carLeft") return new Finalize();
-    if (ev.type === "manualReset") return new Idle();
+    if (ev.type === "manualReset") return flow.topology.initialState();
     this.ignore(flow, ev);
   }
 }

@@ -2,18 +2,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createApiServer, type ApiContext } from "./api.js";
 import { SseHub } from "./sse.js";
-import { Lane } from "../src/domain/Lane.js";
+import { Lane } from "../src/domain/lane/Lane.js";
 import { LaneController } from "../src/LaneController.js";
 import { LaneRegistry } from "../src/domain/LaneRegistry.js";
 import { ValidationService } from "../src/domain/ValidationService.js";
-import { Gate } from "../src/domain/Gate.js";
+import { Gate } from "../src/domain/lane/Gate.js";
 import { FakeGate } from "../src/integrations/FakeGate.js";
 import { FakeAlpr } from "../src/integrations/FakeAlpr.js";
 import { FakeFacial } from "../src/integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "../src/integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "../src/integrations/InMemoryEventBus.js";
-import type { LaneConfig } from "../src/flow/LaneConfig.js";
-import type { FlowDeps } from "../src/flow/events.js";
+import type { LaneConfig } from "../src/domain/lane/LaneConfig.js";
+import type { FlowDeps } from "../src/domain/lane/events.js";
 import type { AddressInfo } from "node:net";
 
 function cfg(): LaneConfig {
@@ -40,7 +40,7 @@ function deps(bus: InMemoryEventBus): FlowDeps {
 async function withServer(fn: (base: string, ctx: ApiContext) => Promise<void>) {
   LaneRegistry.reset();
   const bus = new InMemoryEventBus();
-  const lane = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps(bus)));
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps(bus)));
   await lane.start();
   const ctx: ApiContext = { laneId: "L1", controller: new LaneController(), lane, hub: new SseHub(), bus };
   const server = createApiServer(ctx);

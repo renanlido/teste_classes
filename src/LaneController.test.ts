@@ -1,17 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LaneController } from "./LaneController.js";
-import { Lane } from "./domain/Lane.js";
+import { Lane } from "./domain/lane/Lane.js";
 import { LaneRegistry } from "./domain/LaneRegistry.js";
 import { ValidationService } from "./domain/ValidationService.js";
-import { Gate } from "./domain/Gate.js";
+import { Gate } from "./domain/lane/Gate.js";
 import { FakeGate } from "./integrations/FakeGate.js";
 import { FakeAlpr } from "./integrations/FakeAlpr.js";
 import { FakeFacial } from "./integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "./integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "./integrations/InMemoryEventBus.js";
-import type { LaneConfig } from "./flow/LaneConfig.js";
-import type { FlowDeps } from "./flow/events.js";
+import type { LaneConfig } from "./domain/lane/LaneConfig.js";
+import type { FlowDeps } from "./domain/lane/events.js";
 
 function cfg(): LaneConfig {
   return {
@@ -36,7 +36,7 @@ function deps(): FlowDeps {
 
 test("command routes event to the lane by id", async () => {
   LaneRegistry.reset();
-  const lane = LaneRegistry.get("L1", () => new Lane("L1", "Lane 1", cfg(), deps()));
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
   await lane.start();
   const ctrl = new LaneController();
   await ctrl.command("L1", { type: "startOperation", side: "A" });
@@ -47,4 +47,21 @@ test("command for missing lane throws", async () => {
   LaneRegistry.reset();
   const ctrl = new LaneController();
   await assert.rejects(() => ctrl.command("X", { type: "carInside" }), /lane not found/);
+});
+
+test("command operatorAbort from Intervention finalizes the operation", async () => {
+  LaneRegistry.reset();
+  const c = cfg();
+  c.facialEnabled = true;
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", c, deps()));
+  await lane.start();
+  const ctrl = new LaneController();
+  await ctrl.command("L1", { type: "startOperation", side: "A" });
+  await ctrl.command("L1", { type: "confirmQueue" });
+  await ctrl.command("L1", { type: "gateOpened" });
+  await ctrl.command("L1", { type: "carInside" });
+  await ctrl.command("L1", { type: "carAtTotem" });
+  assert.equal(lane.getState(), "Intervention");
+  await ctrl.command("L1", { type: "operatorAbort" });
+  assert.equal(lane.getState(), "Idle");
 });

@@ -1,15 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Lane } from "./domain/Lane.js";
+import { Lane } from "./domain/lane/Lane.js";
 import { ValidationService } from "./domain/ValidationService.js";
-import { Gate } from "./domain/Gate.js";
+import { Gate } from "./domain/lane/Gate.js";
 import { FakeGate } from "./integrations/FakeGate.js";
 import { FakeAlpr } from "./integrations/FakeAlpr.js";
 import { FakeFacial } from "./integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "./integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "./integrations/InMemoryEventBus.js";
-import type { LaneConfig } from "./flow/LaneConfig.js";
-import type { FlowDeps } from "./flow/events.js";
+import type { LaneConfig } from "./domain/lane/LaneConfig.js";
+import type { FlowDeps } from "./domain/lane/events.js";
 
 function build(facialEnabled: boolean): { lane: Lane; bus: InMemoryEventBus } {
   const cfg: LaneConfig = {
@@ -33,7 +33,7 @@ function build(facialEnabled: boolean): { lane: Lane; bus: InMemoryEventBus } {
     bus,
     validation: new ValidationService(),
   };
-  return { lane: new Lane("L1", "Lane 1", cfg, deps), bus };
+  return { lane: Lane.create("L1", "Lane 1", cfg, deps), bus };
 }
 
 test("happy path with facial + SEV returns to Idle and publishes finalization", async () => {
@@ -42,17 +42,17 @@ test("happy path with facial + SEV returns to Idle and publishes finalization", 
   bus.subscribe("operation.finalized", (p) => finalized.push(p));
 
   await lane.start();
-  await lane.send({ type: "startOperation", side: "A" });
-  await lane.send({ type: "confirmQueue" });
-  await lane.send({ type: "gateOpened" });
-  await lane.send({ type: "carInside" });
-  await lane.send({ type: "plateRead", plate: { value: "ABC1D23", confidence: 0.95 } });
-  await lane.send({ type: "personDetected", person: { id: "p1", name: "Driver" } });
-  await lane.send({ type: "weightMeasured", heavy: true });
-  await lane.send({ type: "carAtTotem" });
+  await lane.startOperation("A");
+  await lane.signal({ type: "confirmQueue" });
+  await lane.signal({ type: "gateOpened" });
+  await lane.signal({ type: "carInside" });
+  await lane.signal({ type: "plateRead", plate: { value: "ABC1D23", confidence: 0.95 } });
+  await lane.signal({ type: "personDetected", person: { id: "p1", name: "Driver" } });
+  await lane.signal({ type: "weightMeasured", heavy: true });
+  await lane.signal({ type: "carAtTotem" });
   assert.equal(lane.getState(), "ReleaseExit");
-  await lane.send({ type: "endOperation" });
-  await lane.send({ type: "carLeft" });
+  await lane.signal({ type: "endOperation" });
+  await lane.signal({ type: "carLeft" });
 
   assert.equal(lane.getState(), "Idle");
   assert.equal(finalized.length, 1);
@@ -61,12 +61,12 @@ test("happy path with facial + SEV returns to Idle and publishes finalization", 
 test("business block leads to Intervention and operator approve resumes exit", async () => {
   const { lane } = build(true);
   await lane.start();
-  await lane.send({ type: "startOperation", side: "A" });
-  await lane.send({ type: "confirmQueue" });
-  await lane.send({ type: "gateOpened" });
-  await lane.send({ type: "carInside" });
-  await lane.send({ type: "carAtTotem" });
+  await lane.startOperation("A");
+  await lane.signal({ type: "confirmQueue" });
+  await lane.signal({ type: "gateOpened" });
+  await lane.signal({ type: "carInside" });
+  await lane.signal({ type: "carAtTotem" });
   assert.equal(lane.getState(), "Intervention");
-  await lane.send({ type: "operatorApprove" });
+  await lane.approve();
   assert.equal(lane.getState(), "ReleaseExit");
 });

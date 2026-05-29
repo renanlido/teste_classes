@@ -13,6 +13,7 @@ function flowFake() {
     operation: null,
     cfg: {} as never,
     deps: {} as never,
+    topology: {} as never,
     transitionTo: async () => { calls.push("transitionTo"); },
     fail: () => { calls.push("fail"); },
     armWatchdog: () => { calls.push("armWatchdog"); },
