@@ -92,26 +92,29 @@ export function renderActions(host: HTMLElement, s: UiState): void {
     title.textContent = `Intervenção necessária${s.reason ? ` — ${s.reason}` : ""}`;
     host.appendChild(title);
 
-    const input = mkInput("placa vista nas fotos", "160px");
-    const confirm = mkBtn("✓ Corrigir e re-validar", () => {
-      const v = input.value.trim();
-      if (v) void sendCommand({ type: "correctPlate", value: v });
-    });
-    confirm.className = "btn act ok";
-    host.append(input, confirm);
+    const plateCorrectable = !(s.reason ?? "").includes("at exit");
+    if (plateCorrectable) {
+      const input = mkInput("placa vista nas fotos", "160px");
+      const confirm = mkBtn("✓ Corrigir e re-validar", () => {
+        const v = input.value.trim();
+        if (v) void sendCommand({ type: "correctPlate", value: v });
+      });
+      confirm.className = "btn act ok";
+      host.append(input, confirm);
 
-    if (s.registry.length) {
-      const reg = document.createElement("div");
-      reg.style.marginTop = "8px";
-      reg.innerHTML = '<span class="muted">registro: </span>';
-      for (const p of s.registry) {
-        const b = mkBtn(p.value, () => {
-          input.value = p.value;
-        });
-        b.className = "btn";
-        reg.appendChild(b);
+      if (s.registry.length) {
+        const reg = document.createElement("div");
+        reg.style.marginTop = "8px";
+        reg.innerHTML = '<span class="muted">registro: </span>';
+        for (const p of s.registry) {
+          const b = mkBtn(p.value, () => {
+            input.value = p.value;
+          });
+          b.className = "btn";
+          reg.appendChild(b);
+        }
+        host.appendChild(reg);
       }
-      host.appendChild(reg);
     }
 
     const approve = mkBtn("Liberar (override)", () => void sendCommand({ type: "operatorApprove" }));

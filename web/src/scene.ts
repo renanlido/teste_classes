@@ -119,6 +119,12 @@ export class Scene {
           }
         }, 400);
       }
+    } else if (state === "ReleaseExit") {
+      const car = (this.activeSide === "B" ? this.B : this.A).active;
+      if (car) {
+        car.style.left = "600px";
+        car.style.top = `${EXIT}px`;
+      }
     } else if (state === "CarLeaving") {
       const car = (this.activeSide === "B" ? this.B : this.A).active;
       if (car) {
