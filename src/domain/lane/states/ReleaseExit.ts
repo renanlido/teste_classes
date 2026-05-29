@@ -1,7 +1,7 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
 import { CarLeaving } from "./CarLeaving.js";
-import { Intervention } from "./Intervention.js";
+import { Blocked } from "./Blocked.js";
 
 export class ReleaseExit extends LaneStateBase {
   readonly name = "ReleaseExit";
@@ -14,7 +14,7 @@ export class ReleaseExit extends LaneStateBase {
 
   handle(ev: FlowEvent, flow: LaneFlowApi): LaneState | void {
     if (ev.type === "endOperation") return new CarLeaving();
-    if (ev.type === "timeout") return new Intervention("car stopped at exit");
+    if (ev.type === "timeout") return new Blocked("car stopped at exit");
     this.ignore(flow, ev);
   }
 }

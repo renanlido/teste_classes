@@ -12,7 +12,9 @@ function row(label: string, value: string): string {
 
 export function renderBadge(badge: HTMLElement, opId: HTMLElement, s: UiState): void {
   badge.textContent = s.laneState + (s.reason ? ` · ${s.reason}` : "");
-  badge.className = "badge" + (s.laneState === "Failure" ? " fail" : s.laneState === "Intervention" ? " warn" : "");
+  badge.className =
+    "badge" +
+    (s.laneState === "Failure" || s.laneState === "Blocked" ? " fail" : s.laneState === "Intervention" ? " warn" : "");
   opId.textContent = s.operationId ? `· op ${s.operationId.slice(0, 8)}` : "";
 }
 

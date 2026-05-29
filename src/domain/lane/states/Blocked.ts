@@ -1,18 +1,23 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
 import { Finalize } from "./Finalize.js";
-import { Blocked } from "./Blocked.js";
 
-export class CarLeaving extends LaneStateBase {
-  readonly name = "CarLeaving";
+export class Blocked extends LaneStateBase {
+  readonly name = "Blocked";
+
+  constructor(private readonly reason: string) {
+    super();
+  }
 
   async onEnter(flow: LaneFlowApi): Promise<void> {
-    flow.armWatchdog(flow.cfg.timeouts.exitMs);
+    flow.deps.bus.publish("operator.intervention", {
+      operationId: flow.operation?.id ?? null,
+      reason: this.reason,
+    });
   }
 
   handle(ev: FlowEvent, flow: LaneFlowApi): LaneState | void {
     if (ev.type === "carLeft") return new Finalize();
-    if (ev.type === "timeout") return new Blocked("car stuck at exit");
     this.ignore(flow, ev);
   }
 }

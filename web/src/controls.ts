@@ -142,6 +142,21 @@ export function renderActions(host: HTMLElement, s: UiState): void {
     const reset = mkBtn("⟲ Reset manual", () => void sendCommand({ type: "manualReset" }));
     reset.className = "btn act";
     host.append(title, reset);
+    return;
+  }
+
+  if (s.laneState === "Blocked") {
+    const title = document.createElement("div");
+    title.className = "act-title";
+    title.textContent = `Lane obstruída${s.reason ? ` — ${s.reason}` : ""}`;
+    const msg = document.createElement("div");
+    msg.className = "muted";
+    msg.style.margin = "6px 0";
+    msg.textContent =
+      "Veículo parado na saída e motorista já liberado. A cancela não baixa e não há ré — nenhuma ação automática resolve. Peça ao guarda para remover o veículo. Nova operação não pode iniciar enquanto a lane estiver obstruída.";
+    const removed = mkBtn("✓ Veículo removido pelo guarda", () => void sendCommand({ type: "carLeft" }));
+    removed.className = "btn act";
+    host.append(title, msg, removed);
   }
 }
 
