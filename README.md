@@ -95,14 +95,20 @@ stateDiagram-v2
   CarLeaving --> Finalize: carLeft
   CarLeaving --> Intervention: timeout (preso)
   Finalize --> Idle: auto
-  Intervention --> ReleaseExit: operatorApprove
+  Intervention --> Validation: correctPlate (re-valida)
+  Intervention --> ReleaseExit: operatorApprove (override)
+  Intervention --> Maneuver: operatorCancel
   Intervention --> Finalize: operatorAbort
+  Maneuver --> Finalize: carReversed (ré) / carLeft (frente)
+  Maneuver --> Idle: manualReset
   Failure --> Idle: manualReset
 ```
 
 Dois baldes de erro: **técnico → `Failure`** (cancela não abre, etc.; via `fail`/watchdog) e
-**negócio → `Intervention`** (regras reprovam). De `Failure`/`Intervention` nunca pula direto pra
-nova operação — sempre passa por `Idle`.
+**negócio → `Intervention`** (regras reprovam). A intervenção **nunca trava**: o operador corrige a
+placa (re-valida via `Validation`), libera no override, ou **cancela → `Maneuver`** (modo manobra; nesta
+lane o carro sai **de ré** pela cancela de entrada do lado — `maneuverMode` configurável). De
+`Failure`/`Intervention`/`Maneuver` nunca pula direto pra nova operação — sempre passa por `Idle`.
 
 ### Regras de validação (domain `ValidationService`)
 
@@ -120,8 +126,10 @@ flowchart TD
   SEV -- não --> OK[libera → ReleaseExit]
 ```
 
-A placa da operação é a de **maior confiança** (não a primeira lida); o tipo `Plate` carrega
-`position` (front/rear) e `unit` (tractor/trailer) — moto tem só traseira e não quebra o fluxo.
+A placa da operação é a de **maior confiança** (não a primeira lida); `Plate` carrega `position`
+(front/rear), `unit` (tractor/trailer), `vehicleType` (car/truck/rig/motorcycle) e `corrected` (quando
+digitada pelo operador) — moto tem só traseira e não quebra o fluxo. Corrigir = empurrar uma placa
+`corrected` (confiança 1, vira a placa da operação) e re-rodar `Validation` contra o registro da pessoa.
 
 ---
 
@@ -164,6 +172,7 @@ sequenceDiagram
 | `alpr.capture` / `alpr.stop` | ObservingAlpr | `{ camera? }` |
 | `facial.start` / `facial.stop` | ObservingFacial | `{}` |
 | `backend.call` | ObservingBackend | `{ method, input, result, ms }` |
+| `maneuver` | Maneuver | `{ mode, side }` |
 | `operation.finalized` | Finalize | `{ id, side, durationMs }` |
 | `operator.intervention` | Intervention | `{ operationId, reason }` |
 | `lane.failure` | Failure | `{ operationId, reason }` |
@@ -176,19 +185,25 @@ sequenceDiagram
 ## 6. Estrutura de arquivos
 
 ```
-src/                  domínio + máquina de estados (backend puro, zero-dep)
+src/                  domínio + flow + aplicação (backend puro, zero-dep)
   domain/             Operation, Gate, Lane, LaneRegistry, ValidationService, EntryQueueService, types
-  flow/               LaneFlow (motor) + LaneTwoEntriesOneExit (topologia) + states/ (11 estados)
+  flow/               LaneFlow (motor) + LaneTwoEntriesOneExit (topologia) + states/ (12 estados, incl. Maneuver)
+  application/        resolveLane + use-cases/ (intenções: StartOperation, CorrectPlate, ApproveRelease,
+                      CancelOperation, ResetLane, IngestLaneSignal)
   integrations/       interfaces (ports) + emulações em memória (Fake*)
-  LaneController.ts   controller fino (comando por id)
+  LaneController.ts   adapter fino: event.type → use case
   index.ts            demo de linha de comando (1 ciclo, imprime estados)
 server/               servidor node:http + SSE
   observing/          decorators de telemetria
-  sse.ts api.ts index.ts
+  sse.ts api.ts index.ts tsconfig.json
 web/                  front Vite + TypeScript
   src/                main, scene, panels, timeline, controls, state, scenarios, api, types, styles
 docs/superpowers/     specs e planos de implementação
 ```
+
+A pilha de chamadas: `LaneController` (adapter) → `application/use-cases` (intenções) → `LaneFlow`
+(process manager, stateful) → `domain` services puros (`ValidationService`/`EntryQueueService`) +
+entidades + ports (infra emulada).
 
 ---
 
@@ -271,4 +286,5 @@ npx tsc --noEmit -p web/tsconfig.json             # typecheck do front
 
 - Spec do backend: `docs/superpowers/specs/2026-05-29-laneflow-design.md`
 - Spec do front: `docs/superpowers/specs/2026-05-29-laneflow-front-design.md`
+- Spec veículos/correção: `docs/superpowers/specs/2026-05-29-laneflow-vehicles-correction-design.md`
 - Planos de implementação: `docs/superpowers/plans/`
