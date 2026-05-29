@@ -33,3 +33,9 @@ main { max-width: 980px; margin: 16px auto; padding: 0 16px; display: flex; flex
 .cam.live { filter: drop-shadow(0 0 8px #f0c060); }
 .car { position: absolute; font-size: 34px; transform: scaleX(-1); transition: left .8s ease, top .8s ease, opacity .4s; }
 .qlabel { position: absolute; font-size: 10px; color: #8b97a7; }
+.actions:empty { display: none; }
+.actions { border-color: #d29922; background: #d2992212; }
+.act-title { font-weight: 700; color: #f0c060; margin-bottom: 10px; }
+.btn.act { font-size: 14px; padding: 8px 16px; }
+.btn.ok { background: #16361f; border-color: #2f7a45; color: #86efac; }
+.btn.danger { background: #3a1d1d; border-color: #7a2e2e; color: #ff9b9b; }
