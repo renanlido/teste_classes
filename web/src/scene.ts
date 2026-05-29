@@ -182,13 +182,9 @@ export class Scene {
   private reverseActive(): void {
     const st = this.activeSide === "B" ? this.B : this.A;
     const y = this.activeSide === "B" ? LANE_B : LANE_A;
-    if (st.active) {
-      st.active.style.left = "60px";
-      st.active.style.top = `${y}px`;
-      setTimeout(() => {
-        if (st.active) st.active.style.opacity = "0";
-      }, 800);
-    }
+    if (!st.active) return;
+    st.active.style.left = "300px";
+    st.active.style.top = `${y}px`;
   }
 
 }
