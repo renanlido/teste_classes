@@ -2,21 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { initialState, reduce } from "./state.js";
 
-test("command.received captures plate (highest confidence), person and heavy", () => {
-  let s = initialState();
-  s = reduce(s, { topic: "command.received", payload: { event: { type: "plateRead", plate: { value: "LOW0A00", confidence: 0.4 } } }, ts: 1 });
-  s = reduce(s, { topic: "command.received", payload: { event: { type: "plateRead", plate: { value: "ABC1D23", confidence: 0.95 } } }, ts: 2 });
-  s = reduce(s, { topic: "command.received", payload: { event: { type: "personDetected", person: { id: "p1", name: "Driver" } } }, ts: 3 });
-  s = reduce(s, { topic: "command.received", payload: { event: { type: "weightMeasured", heavy: true } }, ts: 4 });
-  assert.equal(s.plate?.value, "ABC1D23");
-  assert.equal(s.person?.id, "p1");
-  assert.equal(s.heavy, true);
-  s = reduce(s, { topic: "lane.state", payload: { state: "Idle", operationId: null }, ts: 5 });
-  assert.equal(s.plate, null);
-  assert.equal(s.person, null);
-  assert.equal(s.heavy, false);
-});
-
 test("lane.state updates current state and operationId", () => {
   let s = initialState();
   s = reduce(s, { topic: "lane.state", payload: { state: "WaitEntry", operationId: "op1" }, ts: 1 });
@@ -50,4 +35,30 @@ test("timeline accumulates and caps", () => {
   let s = initialState();
   for (let i = 0; i < 250; i++) s = reduce(s, { topic: "lane.state", payload: { state: "Idle" }, ts: i });
   assert.equal(s.timeline.length <= 200, true);
+});
+
+test("captures multiple plates and vehicleType from the highest confidence", () => {
+  let s = initialState();
+  s = reduce(s, { topic: "command.received", payload: { event: { type: "plateRead", plate: { value: "REAR000", confidence: 0.5, position: "rear", vehicleType: "rig" } } }, ts: 1 });
+  s = reduce(s, { topic: "command.received", payload: { event: { type: "plateRead", plate: { value: "FRONT11", confidence: 0.9, position: "front", unit: "tractor", vehicleType: "rig" } } }, ts: 2 });
+  assert.equal(s.plates.length, 2);
+  assert.equal(s.plate?.value, "FRONT11");
+  assert.equal(s.vehicleType, "rig");
+});
+
+test("captures person and registry from personDetected", () => {
+  let s = initialState();
+  s = reduce(s, { topic: "command.received", payload: { event: { type: "personDetected", person: { id: "p1", name: "Driver", registeredPlates: [{ value: "ABC1D23", confidence: 1, position: "front", vehicleType: "car" }] } } }, ts: 1 });
+  assert.equal(s.person?.id, "p1");
+  assert.equal(s.registry.length, 1);
+  assert.equal(s.registry[0].value, "ABC1D23");
+});
+
+test("maneuver topic sets maneuver, cleared on Idle", () => {
+  let s = initialState();
+  s = reduce(s, { topic: "maneuver", payload: { mode: "reverse", side: "A" }, ts: 1 });
+  assert.equal(s.maneuver?.mode, "reverse");
+  s = reduce(s, { topic: "lane.state", payload: { state: "Idle", operationId: null }, ts: 2 });
+  assert.equal(s.maneuver, null);
+  assert.equal(s.plates.length, 0);
 });

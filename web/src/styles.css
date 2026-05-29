@@ -39,3 +39,10 @@ main { max-width: 980px; margin: 16px auto; padding: 0 16px; display: flex; flex
 .btn.act { font-size: 14px; padding: 8px 16px; }
 .btn.ok { background: #16361f; border-color: #2f7a45; color: #86efac; }
 .btn.danger { background: #3a1d1d; border-color: #7a2e2e; color: #ff9b9b; }
+.photos { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.photo { width: 110px; background: #0d1117; border: 1px solid #364150; border-radius: 8px; padding: 8px; text-align: center; }
+.photo.corrected { border-color: #2f7a45; }
+.photo-tag { font-size: 10px; color: #8b97a7; text-transform: uppercase; }
+.photo-plate { font-family: ui-monospace, monospace; font-weight: 700; margin: 6px 0; letter-spacing: 1px; }
+.photo-conf { font-size: 10px; color: #8b97a7; }
+.chip { display: inline-block; background: #21262d; border: 1px solid #364150; border-radius: 6px; padding: 2px 8px; margin: 0 4px 4px 0; font-family: ui-monospace, monospace; font-size: 12px; }

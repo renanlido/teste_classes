@@ -1,4 +1,4 @@
-import type { TelemetryMsg } from "./types.js";
+import type { TelemetryMsg, Plate, VehicleType } from "./types.js";
 
 export interface UiState {
   laneState: string;
@@ -7,9 +7,12 @@ export interface UiState {
   alpr: { rearA: boolean; rearB: boolean; front: boolean };
   facial: { active: boolean };
   rules: { booking?: boolean; plateRegistered?: boolean; sev?: boolean };
-  plate: { value: string; confidence: number } | null;
+  plates: Plate[];
+  plate: Plate | null;
+  vehicleType: VehicleType | null;
   person: { id: string; name: string } | null;
-  heavy: boolean;
+  registry: Plate[];
+  maneuver: { mode: string; side: string } | null;
   watchdog: { armed: boolean; ms: number | null };
   reason: string | null;
   timeline: { ts: number; topic: string; text: string }[];
@@ -23,9 +26,12 @@ export function initialState(): UiState {
     alpr: { rearA: false, rearB: false, front: false },
     facial: { active: false },
     rules: {},
+    plates: [],
     plate: null,
+    vehicleType: null,
     person: null,
-    heavy: false,
+    registry: [],
+    maneuver: null,
     watchdog: { armed: false, ms: null },
     reason: null,
     timeline: [],
@@ -39,8 +45,20 @@ function gateKey(camera: string): "rearA" | "rearB" | "front" | null {
   return null;
 }
 
+function highestPlate(plates: Plate[]): Plate | null {
+  if (plates.length === 0) return null;
+  return [...plates].sort((a, b) => b.confidence - a.confidence)[0];
+}
+
 export function reduce(state: UiState, msg: TelemetryMsg): UiState {
-  const s: UiState = { ...state, gates: { ...state.gates }, alpr: { ...state.alpr }, rules: { ...state.rules } };
+  const s: UiState = {
+    ...state,
+    gates: { ...state.gates },
+    alpr: { ...state.alpr },
+    rules: { ...state.rules },
+    plates: [...state.plates],
+    registry: [...state.registry],
+  };
   const p = msg.payload;
   switch (msg.topic) {
     case "lane.state":
@@ -49,24 +67,27 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
       if (s.laneState === "Idle") {
         s.rules = {};
         s.reason = null;
+        s.plates = [];
         s.plate = null;
+        s.vehicleType = null;
         s.person = null;
-        s.heavy = false;
+        s.registry = [];
+        s.maneuver = null;
       }
       break;
     case "command.received": {
       const ev = p.event as {
         type: string;
-        plate?: { value: string; confidence: number };
-        person?: { id: string; name: string };
-        heavy?: boolean;
+        plate?: Plate;
+        person?: { id: string; name: string; registeredPlates?: Plate[] };
       };
       if (ev.type === "plateRead" && ev.plate) {
-        if (!s.plate || ev.plate.confidence >= s.plate.confidence) s.plate = ev.plate;
+        s.plates = [...s.plates, ev.plate];
+        s.plate = highestPlate(s.plates);
+        s.vehicleType = s.plate?.vehicleType ?? null;
       } else if (ev.type === "personDetected" && ev.person) {
-        s.person = ev.person;
-      } else if (ev.type === "weightMeasured") {
-        s.heavy = Boolean(ev.heavy);
+        s.person = { id: ev.person.id, name: ev.person.name };
+        s.registry = ev.person.registeredPlates ?? [];
       }
       break;
     }
@@ -107,6 +128,9 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
     case "watchdog.clear":
       s.watchdog = { armed: false, ms: null };
       break;
+    case "maneuver":
+      s.maneuver = { mode: String(p.mode), side: String(p.side) };
+      break;
     case "operator.intervention":
     case "lane.failure":
       s.reason = String(p.reason);
@@ -123,7 +147,7 @@ function describe(msg: TelemetryMsg): string {
     case "command.received":
       return `command ${(p.event as { type: string }).type}`;
     case "lane.state":
-      return `state → ${String(p.state)}`;
+      return `state -> ${String(p.state)}`;
     case "gate.open":
     case "gate.close":
     case "gate.state":
@@ -131,13 +155,13 @@ function describe(msg: TelemetryMsg): string {
     case "alpr.capture":
       return `alpr capture ${String(p.camera)}`;
     case "backend.call":
-      return `backend ${String(p.method)} → ${JSON.stringify(p.result)}`;
+      return `backend ${String(p.method)} -> ${JSON.stringify(p.result)}`;
+    case "maneuver":
+      return `maneuver ${String(p.mode)} side ${String(p.side)}`;
     case "operator.intervention":
       return `intervention: ${String(p.reason)}`;
     case "lane.failure":
       return `failure: ${String(p.reason)}`;
-    case "operation.finalized":
-      return `finalized op ${String(p.id)} (${String(p.durationMs)}ms)`;
     default:
       return msg.topic;
   }

@@ -22,6 +22,7 @@ export const TOPICS = [
   "lane.state",
   "watchdog.arm",
   "watchdog.clear",
+  "maneuver",
   "gate.open",
   "gate.close",
   "gate.state",
@@ -42,6 +43,7 @@ function config(): LaneConfig {
   return {
     facialEnabled: true,
     sevEnabled: true,
+    maneuverMode: "reverse",
     gates: { entryA: "gateA", entryB: "gateB", exit: "gateExit" },
     alpr: { rearA: "camRearA", rearB: "camRearB", frontExit: "camFront" },
     timeouts: { gateOpenMs: 800, carInsideMs: 4000, plateMs: 4000, backendMs: 800, exitMs: 4000 },

@@ -25,16 +25,38 @@ export function renderSensors(host: HTMLElement, s: UiState): void {
     row(`${dot(s.watchdog.armed, true)} watchdog`, s.watchdog.armed ? `${s.watchdog.ms}ms` : "—");
 }
 
+const POSITION_LABEL: Record<string, string> = {
+  "front:tractor": "frontal (cavalo)",
+  "rear:tractor": "traseira (cavalo)",
+  "front:trailer": "frontal (carreta)",
+  "rear:trailer": "traseira (carreta)",
+  "front:": "frontal",
+  "rear:": "traseira",
+};
+
+function plateLabel(p: { position?: string; unit?: string }): string {
+  return POSITION_LABEL[`${p.position ?? ""}:${p.unit ?? ""}`] ?? p.position ?? "placa";
+}
+
+const VEHICLE_LABEL: Record<string, string> = { car: "Carro", truck: "Caminhão", rig: "Carreta", motorcycle: "Moto" };
+
 export function renderIntegrations(host: HTMLElement, s: UiState): void {
-  const placa = s.plate ? `${s.plate.value} (${s.plate.confidence.toFixed(2)})` : "—";
-  const pessoa = s.person ? `${s.person.name} (${s.person.id})` : "—";
-  const peso = s.heavy ? "pesado" : "—";
+  const tipo = s.vehicleType ? VEHICLE_LABEL[s.vehicleType] ?? s.vehicleType : "—";
+  const photos = s.plates
+    .map(
+      (p) =>
+        `<div class="photo${p.corrected ? " corrected" : ""}"><div class="photo-tag">${plateLabel(p)}</div><div class="photo-plate">${p.value}</div><div class="photo-conf">conf ${p.confidence.toFixed(2)}</div></div>`,
+    )
+    .join("");
+  const registro = s.registry.length
+    ? s.registry.map((p) => `<span class="chip">${p.value}</span>`).join("")
+    : "—";
   host.innerHTML =
-    "<h4>Veículo & Integrações</h4>" +
-    row("placa", placa) +
-    row("pessoa", pessoa) +
-    row("peso", peso) +
-    row(`${dot(s.alpr.rearA || s.alpr.rearB || s.alpr.front)} ALPR`, s.alpr.front ? "frontal" : s.alpr.rearB ? "rear B" : s.alpr.rearA ? "rear A" : "—") +
+    `<h4>Veículo & Pessoa</h4>` +
+    row("tipo", tipo) +
+    `<div class="photos">${photos || '<span class="muted">sem placas lidas</span>'}</div>` +
+    row("👤 pessoa", s.person ? `${s.person.name} (${s.person.id})` : "—") +
+    `<div class="row"><span>placas do registro</span><span>${registro}</span></div>` +
     row("Facial", dot(s.facial.active)) +
     row("booking", dot(s.rules.booking, true)) +
     row("plate registered", dot(s.rules.plateRegistered, true)) +

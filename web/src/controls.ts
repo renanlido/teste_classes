@@ -1,6 +1,7 @@
 import { sendCommand, getSnapshot } from "./api.js";
 import { scenarios } from "./scenarios.js";
 import type { LaneEvent } from "./types.js";
+import type { UiState } from "./state.js";
 
 const CONTROL_EVENTS: { label: string; event: LaneEvent }[] = [
   { label: "start A", event: { type: "startOperation", side: "A" } },
@@ -83,29 +84,52 @@ export function renderControls(host: HTMLElement): void {
   host.appendChild(data);
 }
 
-export async function releaseCar(): Promise<void> {
-  await sendCommand({ type: "operatorApprove" });
-  await sleep(700);
-  await sendCommand({ type: "endOperation" });
-  await sleep(700);
-  await sendCommand({ type: "carLeft" });
-}
-
-export function renderActions(host: HTMLElement, laneState: string, reason: string | null): void {
+export function renderActions(host: HTMLElement, s: UiState): void {
   host.innerHTML = "";
-  if (laneState === "Intervention") {
+  if (s.laneState === "Intervention") {
     const title = document.createElement("div");
     title.className = "act-title";
-    title.textContent = `Intervenção necessária${reason ? ` — ${reason}` : ""}`;
-    const approve = mkBtn("✓ Liberar carro", () => void releaseCar());
-    approve.className = "btn act ok";
-    const abort = mkBtn("✗ Abortar operação", () => void sendCommand({ type: "operatorAbort" }));
-    abort.className = "btn act danger";
-    host.append(title, approve, abort);
-  } else if (laneState === "Failure") {
+    title.textContent = `Intervenção necessária${s.reason ? ` — ${s.reason}` : ""}`;
+    host.appendChild(title);
+
+    const input = mkInput("placa vista nas fotos", "160px");
+    const confirm = mkBtn("✓ Corrigir e re-validar", () => {
+      const v = input.value.trim();
+      if (v) void sendCommand({ type: "correctPlate", value: v });
+    });
+    confirm.className = "btn act ok";
+    host.append(input, confirm);
+
+    if (s.registry.length) {
+      const reg = document.createElement("div");
+      reg.style.marginTop = "8px";
+      reg.innerHTML = '<span class="muted">registro: </span>';
+      for (const p of s.registry) {
+        const b = mkBtn(p.value, () => {
+          input.value = p.value;
+        });
+        b.className = "btn";
+        reg.appendChild(b);
+      }
+      host.appendChild(reg);
+    }
+
+    const approve = mkBtn("Liberar (override)", () => void sendCommand({ type: "operatorApprove" }));
+    approve.className = "btn act";
+    const cancel = mkBtn("✗ Cancelar → ré", () => void sendCommand({ type: "operatorCancel" }));
+    cancel.className = "btn act danger";
+    host.append(document.createElement("br"), approve, cancel);
+  } else if (s.laneState === "Maneuver") {
     const title = document.createElement("div");
     title.className = "act-title";
-    title.textContent = `Falha técnica${reason ? ` — ${reason}` : ""}`;
+    title.textContent = `Modo manobra — ré pelo lado ${s.maneuver?.side ?? "A"}`;
+    const done = mkBtn("✓ Confirmar saída de ré", () => void sendCommand({ type: "carReversed" }));
+    done.className = "btn act ok";
+    host.append(title, done);
+  } else if (s.laneState === "Failure") {
+    const title = document.createElement("div");
+    title.className = "act-title";
+    title.textContent = `Falha técnica${s.reason ? ` — ${s.reason}` : ""}`;
     const reset = mkBtn("⟲ Reset manual", () => void sendCommand({ type: "manualReset" }));
     reset.className = "btn act";
     host.append(title, reset);
