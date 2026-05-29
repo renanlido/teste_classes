@@ -206,7 +206,7 @@ npm install
 npm run front     # sobe API (8787) + Vite (5180)
 ```
 
-Abra **http://localhost:5180** (a página é o Vite; `8787` é só a API). O Vite faz proxy de `/api/*`
+Abra **<http://localhost:5180>** (a página é o Vite; `8787` é só a API). O Vite faz proxy de `/api/*`
 para o servidor Node.
 
 Dois terminais separados, se preferir:
@@ -216,12 +216,24 @@ npm run server    # API + SSE em http://localhost:8787
 npm run web        # front em http://localhost:5180
 ```
 
-Na tela: cena animada (filas A/B → eclusa → saída), painéis **Sensores**/**Integrações**,
-**Timeline** ao vivo e **Controles**:
-- **Cenários**: `Happy path`, `Happy path B`, `Alternar A↔B`, `Sem pessoa` (trava), `Carro desiste`.
+Na tela: cena animada (filas A/B → eclusa → saída), painel **Veículo & Pessoa** (tipo, fotos de cada
+placa, dados da pessoa, placas do registro), painéis **Sensores**/**Integrações**, **Timeline** ao vivo
+e **Controles**:
+
+- **Cenários**: `Carro OK` (2 placas), `Moto OK` (1 traseira), `Carreta OK` (cavalo+carreta, 3 placas),
+  `Placa não detectada` (trava → corrigir), `Cancelar → ré` (trava → manobra).
 - **Controle manual**: um botão por evento.
 - **Dados**: `plateRead`, `personDetected`, `weightMeasured`.
-- **Painel de ação** (aparece em Intervention/Failure): **Liberar carro** / **Abortar** / **Reset**.
+- **Painel de ação** (a intervenção nunca trava):
+  - **Intervention**: digitar/escolher a placa (do registro) → **Corrigir e re-validar**; **Liberar
+    (override)**; **Cancelar → ré** (modo manobra).
+  - **Maneuver**: **Confirmar saída de ré** (o carro recua pela cancela de entrada do lado).
+  - **Failure**: **Reset manual**.
+
+**Tipos de veículo**: a classificação vem por placa (`vehicleType`). Carro/caminhão = frontal+traseira;
+carreta = cavalo (frontal+traseira) + carreta (traseira); moto = só traseira. A placa da operação é a de
+maior confiança. Uma pessoa tem N placas no registro; a validação confere a placa lida contra o registro,
+e o operador corrige digitando a placa vista nas fotos.
 
 > Reiniciar o servidor zera o estado (tudo em memória). O front re-sincroniza ao reconectar.
 
