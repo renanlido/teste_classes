@@ -22,6 +22,9 @@ export type FlowEvent =
   | { type: "operatorApprove" }
   | { type: "operatorAbort" }
   | { type: "manualReset" }
+  | { type: "correctPlate"; value: string }
+  | { type: "operatorCancel" }
+  | { type: "carReversed" }
   | { type: "timeout" };
 
 export const DATA_EVENTS = ["plateRead", "personDetected", "weightMeasured"] as const;
