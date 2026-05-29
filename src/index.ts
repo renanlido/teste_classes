@@ -1,63 +1,62 @@
-import { Lane } from "./classes";
+import { Lane } from "./domain/Lane.js";
+import { LaneRegistry } from "./domain/LaneRegistry.js";
+import { ValidationService } from "./domain/ValidationService.js";
+import { Gate } from "./domain/Gate.js";
+import { LaneController } from "./LaneController.js";
+import { FakeGate } from "./integrations/FakeGate.js";
+import { FakeAlpr } from "./integrations/FakeAlpr.js";
+import { FakeFacial } from "./integrations/FakeFacial.js";
+import { FakeBackendRecintos } from "./integrations/FakeBackendRecintos.js";
+import { InMemoryEventBus } from "./integrations/InMemoryEventBus.js";
+import type { LaneConfig } from "./flow/LaneConfig.js";
+import type { FlowDeps, FlowEvent } from "./flow/events.js";
 
-const bancoDeDados = [{
-  name: "Lane 1"
-}, {
-  name: "Lane 2"
-}]
-
-
-const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+function buildLane(id: string, name: string): Lane {
+  const cfg: LaneConfig = {
+    facialEnabled: true,
+    sevEnabled: true,
+    gates: { entryA: "gA", entryB: "gB", exit: "gS" },
+    alpr: { rearA: "cA", rearB: "cB", frontExit: "cS" },
+    timeouts: { gateOpenMs: 200, carInsideMs: 2000, plateMs: 2000, backendMs: 500, exitMs: 2000 },
+  };
+  const gate = new FakeGate();
+  const deps: FlowDeps = {
+    gates: { A: new Gate(gate), B: new Gate(gate), exit: new Gate(gate) },
+    alpr: new FakeAlpr(),
+    facial: new FakeFacial(),
+    backend: new FakeBackendRecintos({
+      bookings: { p1: true },
+      registeredPlates: { p1: ["ABC1D23"] },
+      sev: { p1: true },
+    }),
+    bus: new InMemoryEventBus(),
+    validation: new ValidationService(),
+  };
+  return new Lane(id, name, cfg, deps);
+}
 
 async function main(): Promise<void> {
-  
-  const lanes: Lane[] = []
+  const lane = LaneRegistry.get("L1", () => buildLane("L1", "Lane 1"));
+  await lane.start();
 
-  for(const item of bancoDeDados){
-    lanes.push(new Lane(item.name))
+  const ctrl = new LaneController();
+  const steps: FlowEvent[] = [
+    { type: "startOperation", side: "A" },
+    { type: "confirmQueue" },
+    { type: "gateOpened" },
+    { type: "carInside" },
+    { type: "plateRead", plate: { value: "ABC1D23", confidence: 0.95 } },
+    { type: "personDetected", person: { id: "p1", name: "Driver" } },
+    { type: "weightMeasured", heavy: true },
+    { type: "carAtTotem" },
+    { type: "endOperation" },
+    { type: "carLeft" },
+  ];
+
+  for (const ev of steps) {
+    await ctrl.command("L1", ev);
+    console.log(ev.type, "-> state:", lane.getState());
   }
-
-  await pause(1000);
-
-  const redisSinalInicioOp = {
-    laneName: 'Lane1'
-  }
-
- console.log("Comando Recebido: ", redisSinalInicioOp);
-
-  const findLane = lanes.find(item => item.nome = redisSinalInicioOp.laneName);
-
-  if(!findLane){
-    throw new Error("tem isso não meu camarada")
-  }
-
-  const lane1 = findLane
-  console.log(lane1)
-
-  console.log("Está em operação?: ", lane1.isInOperation())
-  lane1.startOperation()
-
-  await pause(3000);
-  console.log("Está em operação?: ", lane1.isInOperation())
-  
-  await pause(3000);
-  lane1.endOperation()
-  
-  // while(true){
-  //   await pause(3000);
-  //   console.log("tem Evento?")
-  // }
-
-  await pause(3000);
-  console.log("Está em operação?: ", lane1.isInOperation())
-
-  console.log("Tempo da operação: ",lane1.operation?.operationTime())
-  console.log(lane1.isInOperation())
-  lane1.startOperation()
-
-  const lane2 = new Lane('Lane 1')
-  
-  console.log(lane2)
 }
 
 main();
