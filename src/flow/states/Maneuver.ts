@@ -9,10 +9,15 @@ export class Maneuver extends LaneStateBase {
   async onEnter(flow: LaneFlowApi): Promise<void> {
     const mode = flow.cfg.maneuverMode ?? "reverse";
     const side = flow.operation?.side ?? "A";
+    await flow.deps.gates.exit.close();
     if (mode === "reverse") {
+      const opposite = side === "B" ? flow.deps.gates.A : flow.deps.gates.B;
+      await opposite.close();
       const gate = side === "B" ? flow.deps.gates.B : flow.deps.gates.A;
       await gate.open();
     } else {
+      await flow.deps.gates.A.close();
+      await flow.deps.gates.B.close();
       await flow.deps.gates.exit.open();
     }
     flow.deps.bus.publish("maneuver", { mode, side });

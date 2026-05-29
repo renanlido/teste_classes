@@ -22,6 +22,7 @@ export const TOPICS = [
   "lane.state",
   "watchdog.arm",
   "watchdog.clear",
+  "maneuver",
   "gate.open",
   "gate.close",
   "gate.state",
