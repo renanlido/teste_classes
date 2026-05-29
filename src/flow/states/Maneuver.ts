@@ -11,9 +11,9 @@ export class Maneuver extends LaneStateBase {
     const side = flow.operation?.side ?? "A";
     await flow.deps.gates.exit.close();
     if (mode === "reverse") {
+      const gate = flow.topology.entryGate(flow);
       const opposite = side === "B" ? flow.deps.gates.A : flow.deps.gates.B;
       await opposite.close();
-      const gate = side === "B" ? flow.deps.gates.B : flow.deps.gates.A;
       await gate.open();
     } else {
       await flow.deps.gates.A.close();

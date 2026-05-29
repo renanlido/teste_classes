@@ -6,7 +6,7 @@ export class Capture extends LaneStateBase {
   readonly name = "Capture";
 
   async onEnter(flow: LaneFlowApi): Promise<void> {
-    const gate = flow.operation?.side === "B" ? flow.deps.gates.B : flow.deps.gates.A;
+    const gate = flow.topology.entryGate(flow);
     await gate.close();
     if (flow.cfg.facialEnabled) flow.deps.facial.start();
     flow.armWatchdog(flow.cfg.timeouts.plateMs);
