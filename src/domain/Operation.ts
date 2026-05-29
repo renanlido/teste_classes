@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Side, Plate, Person, Booking, SevResult } from "./types.js";
+import type { Side, Plate, Person, Booking, SevResult, VehicleType } from "./types.js";
 
 export class Operation {
   readonly id: string;
@@ -21,6 +21,10 @@ export class Operation {
 
   get plate(): Plate | undefined {
     return [...this.plates].sort((a, b) => b.confidence - a.confidence)[0];
+  }
+
+  get vehicleType(): VehicleType {
+    return this.plate?.vehicleType ?? "car";
   }
 
   endOperation(): void {

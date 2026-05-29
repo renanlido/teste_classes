@@ -45,3 +45,15 @@ test("operationTime returns duration after endOperation", () => {
   op.endOperation();
   assert.equal(op.operationTime() >= 0, true);
 });
+
+test("vehicleType comes from the highest-confidence plate", () => {
+  const op = new Operation("A");
+  op.plates.push({ value: "LOW0A00", confidence: 0.4, position: "rear", vehicleType: "car" });
+  op.plates.push({ value: "RIG1234", confidence: 0.95, position: "front", unit: "tractor", vehicleType: "rig" });
+  assert.equal(op.vehicleType, "rig");
+});
+
+test("vehicleType defaults to car when no plate", () => {
+  const op = new Operation("A");
+  assert.equal(op.vehicleType, "car");
+});
