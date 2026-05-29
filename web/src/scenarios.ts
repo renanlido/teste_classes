@@ -1,8 +1,8 @@
 import type { LaneEvent } from "./types.js";
 
-export const scenarios: Record<string, LaneEvent[]> = {
-  "Happy path": [
-    { type: "startOperation", side: "A" },
+function happyPath(side: "A" | "B"): LaneEvent[] {
+  return [
+    { type: "startOperation", side },
     { type: "confirmQueue" },
     { type: "gateOpened" },
     { type: "carInside" },
@@ -12,7 +12,13 @@ export const scenarios: Record<string, LaneEvent[]> = {
     { type: "carAtTotem" },
     { type: "endOperation" },
     { type: "carLeft" },
-  ],
+  ];
+}
+
+export const scenarios: Record<string, LaneEvent[]> = {
+  "Happy path": happyPath("A"),
+  "Happy path B": happyPath("B"),
+  "Alternar A↔B": [...happyPath("A"), ...happyPath("B")],
   "Sem pessoa": [
     { type: "startOperation", side: "A" },
     { type: "confirmQueue" },
