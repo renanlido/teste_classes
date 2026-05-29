@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LaneFlow — tempo real</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div><b>LaneFlow</b> · Lane 1 <span id="opId" class="muted"></span></div>
+      <span id="stateBadge" class="badge">Idle</span>
+    </header>
+    <main>
+      <section id="stage" class="card stage"></section>
+      <div class="grid">
+        <section id="sensors" class="card"></section>
+        <section id="integrations" class="card"></section>
+      </div>
+      <section id="timeline" class="card timeline"></section>
+      <section id="controls" class="card"></section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
