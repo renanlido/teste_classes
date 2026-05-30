@@ -131,9 +131,45 @@ next — draining the CLP FIFO one operation at a time.
 - All existing suites stay green (manual `startOperation` path preserved).
 - No `else` (early-return style). TDD for domain units.
 
+## Real adapter path (Siemens) — documented, NOT built
+
+This project is a **pure simulator: no real CLP/PLC, no native dependency, no
+hardware**. `FakeClp` is the only implementation we build and run. The section
+below documents how a real Siemens adapter would later drop in behind
+`EntrySensorPort`, so the seam is justified — it is reference, not work in this
+plan.
+
+Research (5 angles, 21 sources, adversarially verified) recommends:
+
+- **Default real adapter — `Snap7EntrySensorAdapter` (license-free).** Uses
+  `node-snap7` (actively maintained native wrapper around snap7) speaking
+  **S7comm over ISO-on-TCP RFC1006, port 102**. `ConnectTo(ip, rack, slot)` —
+  S7-1200/1500 = rack 0 slot 1; S7-300/400 = slot 2. S7-1500 / ET 200SP run in
+  300/400 **compatibility mode** (non-optimized global DBs).
+  - Data model: one non-optimized global DB with a presence `bool` per side plus
+    a FIFO ring buffer (head/tail indices + entries). `arrive` polls via
+    `DBRead` (~50–200 ms — snap7 has **no native subscriptions**); `peek`/
+    `consume` read then advance the tail via `DBWrite`; `snapshot` copies
+    presence + queue.
+  - Security: requires TIA config **PUT/GET on, optimized block access off,
+    global DBs only**. Enabling PUT/GET lets any network client read/write PLC
+    memory **without authentication** (S7comm has no auth/encryption) → **only on
+    an isolated industrial network**.
+- **Hardened upgrade — `OpcUaEntrySensorAdapter`.** Uses `node-opcua`
+  monitored-item subscriptions (lower latency, X.509 certificates). Native OPC UA
+  server on S7-1500 from **firmware V2.0+** (S7-1200 server-only; S7-300/400 need
+  a gateway). Requires a **paid Siemens runtime license** (Small/Medium/Large by
+  CPU class) loaded on the CPU — this is the upgrade path, not the default.
+- Sparkplug B has no production-grade Node library; PROFINET/Modbus TCP are not
+  idiomatic for this read pattern on Siemens.
+
+Sources: github.com/mathiask88/node-snap7 · snap7.sourceforge.net ·
+python-snap7 TIA config docs · docs.tia.siemens.cloud (OPC UA server license) ·
+Siemens 109737901 (OPC UA on S7-1500).
+
 ## Out of scope
 
-- Real CLP/PLC protocol (Modbus/OPC-UA). The `EntrySensorPort` is the seam where
-  a real adapter would later replace `FakeClp`.
+- Building any real PLC adapter, adding `node-snap7`/`node-opcua`, or any native
+  dependency. The runtime is fully simulated via `FakeClp`.
 - Multiple lanes/eclusas.
 - Persisting the queue across restarts.
