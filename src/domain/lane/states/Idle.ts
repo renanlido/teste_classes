@@ -1,10 +1,7 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
 import { Operation } from "../Operation.js";
-import { EntryQueueService } from "../../EntryQueueService.js";
 import { WaitEntry } from "./WaitEntry.js";
-
-const queue = new EntryQueueService();
 
 export class Idle extends LaneStateBase {
   readonly name = "Idle";
@@ -23,9 +20,7 @@ export class Idle extends LaneStateBase {
       this.ignore(flow, ev);
       return;
     }
-    const side = queue.resolveSide([ev.side]);
-    if (!side) return;
-    flow.operation = new Operation(side);
+    flow.operation = new Operation(ev.side);
     return new WaitEntry();
   }
 }

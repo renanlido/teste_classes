@@ -5,6 +5,7 @@ import type { FacialPort } from "../../integrations/FacialPort.js";
 import type { BackendPort } from "../../integrations/BackendPort.js";
 import type { EventBus } from "../../integrations/EventBus.js";
 import type { ValidationService } from "../ValidationService.js";
+import type { EntrySensorPort } from "../../integrations/EntrySensorPort.js";
 
 export type FlowEvent =
   | { type: "startOperation"; side: Side }
@@ -25,6 +26,7 @@ export type FlowEvent =
   | { type: "correctPlate"; value: string }
   | { type: "operatorCancel" }
   | { type: "carReversed" }
+  | { type: "vehicleArrived" }
   | { type: "timeout" };
 
 export const DATA_EVENTS = ["plateRead", "personDetected", "weightMeasured"] as const;
@@ -36,6 +38,7 @@ export interface FlowDeps {
   backend: BackendPort;
   bus: EventBus;
   validation: ValidationService;
+  clp: EntrySensorPort;
 }
 
 export const DEVICE_SIGNAL_TYPES = [
@@ -49,6 +52,7 @@ export const DEVICE_SIGNAL_TYPES = [
   "personDetected",
   "weightMeasured",
   "endOperation",
+  "vehicleArrived",
 ] as const;
 
 export type DeviceSignal = Extract<FlowEvent, { type: (typeof DEVICE_SIGNAL_TYPES)[number] }>;

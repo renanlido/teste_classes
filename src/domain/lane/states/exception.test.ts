@@ -5,6 +5,7 @@ import { Failure } from "./Failure.js";
 import { LaneFlow } from "../LaneFlow.js";
 import { Operation } from "../Operation.js";
 import { Gate } from "../Gate.js";
+import { FakeClp } from "../../../integrations/FakeClp.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
 import type { CommandGate } from "../../../integrations/CommandGate.js";
@@ -35,6 +36,7 @@ function deps(): { d: FlowDeps; published: { topic: string; payload: unknown }[]
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish(topic, payload) { published.push({ topic, payload }); }, subscribe() {} },
     validation: { async evaluate() { return { ok: true }; } } as unknown as FlowDeps["validation"],
+    clp: new FakeClp(),
   };
   return { d, published };
 }
