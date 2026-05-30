@@ -1,4 +1,4 @@
-import type { LaneEvent, TelemetryMsg, ArrivalSide, VehicleType } from "./types.js";
+import type { ArrivalSide, Arrival, LaneEvent, TelemetryMsg, VehicleType } from "./types.js";
 
 export async function sendCommand(event: LaneEvent): Promise<void> {
   await fetch("/api/command", {
@@ -8,17 +8,25 @@ export async function sendCommand(event: LaneEvent): Promise<void> {
   });
 }
 
-export async function getSnapshot(): Promise<{ state: string; operationId: string | null }> {
-  const res = await fetch("/api/snapshot");
-  return (await res.json()) as { state: string; operationId: string | null };
-}
-
 export async function arrive(side: ArrivalSide, vehicleType: VehicleType): Promise<void> {
   await fetch("/api/arrive", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ side, vehicleType }),
   });
+}
+
+export async function getSnapshot(): Promise<{
+  state: string;
+  operationId: string | null;
+  clp?: { A: Arrival[]; B: Arrival[] };
+}> {
+  const res = await fetch("/api/snapshot");
+  return (await res.json()) as {
+    state: string;
+    operationId: string | null;
+    clp?: { A: Arrival[]; B: Arrival[] };
+  };
 }
 
 export function openStream(onMessage: (msg: TelemetryMsg) => void, onOpen?: () => void): EventSource {

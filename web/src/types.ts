@@ -1,7 +1,6 @@
 export type PlatePosition = "front" | "rear";
 export type VehicleUnit = "tractor" | "trailer";
 export type VehicleType = "car" | "truck" | "rig" | "motorcycle";
-export type ArrivalSide = "A" | "B";
 
 export interface Plate {
   value: string;
@@ -10,6 +9,14 @@ export interface Plate {
   unit?: VehicleUnit;
   vehicleType?: VehicleType;
   corrected?: boolean;
+}
+
+export type ArrivalSide = "A" | "B";
+
+export interface Arrival {
+  side: ArrivalSide;
+  vehicleType: VehicleType;
+  seq: number;
 }
 
 export interface TelemetryMsg {
