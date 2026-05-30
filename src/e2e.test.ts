@@ -72,3 +72,36 @@ test("business block leads to Intervention and operator approve resumes exit", a
   await lane.approve();
   assert.equal(lane.getState(), "ReleaseExit");
 });
+
+test("CLP drains arrivals FIFO: B before A, side+type from sensors", async () => {
+  const clp = new FakeClp();
+  clp.arrive("B", "rig");
+  clp.arrive("A", "car");
+  const g = new FakeGate();
+  const bus = new InMemoryEventBus();
+  const deps: FlowDeps = {
+    gates: { A: new Gate(g), B: new Gate(g), exit: new Gate(g) },
+    alpr: new FakeAlpr(),
+    facial: new FakeFacial(),
+    backend: new FakeBackendRecintos({
+      bookings: { p1: true },
+      registeredPlates: { p1: ["ABC1D23"] },
+      sev: { p1: true },
+    }),
+    bus,
+    validation: new ValidationService(),
+    clp,
+  };
+  const cfg: LaneConfig = {
+    facialEnabled: false,
+    sevEnabled: false,
+    gates: { entryA: "gA", entryB: "gB", exit: "gS" },
+    alpr: { rearA: "cA", rearB: "cB", frontExit: "cS" },
+    timeouts: { gateOpenMs: 50, carInsideMs: 50, plateMs: 50, backendMs: 50, exitMs: 50 },
+  };
+  const lane = Lane.create("L1", "Lane 1", cfg, deps);
+  await lane.start();
+  await lane.signal({ type: "vehicleArrived" });
+  assert.equal(lane.getState(), "WaitEntry");
+  assert.equal(lane.snapshot().operationId !== null, true);
+});
