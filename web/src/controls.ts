@@ -1,11 +1,9 @@
-import { sendCommand, getSnapshot } from "./api.js";
+import { sendCommand, getSnapshot, arrive } from "./api.js";
 import { scenarios } from "./scenarios.js";
-import type { LaneEvent } from "./types.js";
+import type { LaneEvent, ArrivalSide, VehicleType } from "./types.js";
 import type { UiState } from "./state.js";
 
 const CONTROL_EVENTS: { label: string; event: LaneEvent }[] = [
-  { label: "start A", event: { type: "startOperation", side: "A" } },
-  { label: "start B", event: { type: "startOperation", side: "B" } },
   { label: "confirmQueue", event: { type: "confirmQueue" } },
   { label: "gateOpened", event: { type: "gateOpened" } },
   { label: "carInside", event: { type: "carInside" } },
@@ -18,6 +16,12 @@ const CONTROL_EVENTS: { label: string; event: LaneEvent }[] = [
 ];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const VEHICLE_TYPES: VehicleType[] = ["car", "motorcycle", "rig", "truck"];
+
+function randomType(): VehicleType {
+  return VEHICLE_TYPES[Math.floor(Math.random() * VEHICLE_TYPES.length)];
+}
 
 async function waitForIdle(timeoutMs = 12000): Promise<void> {
   const start = Date.now();
@@ -49,6 +53,39 @@ export function renderControls(host: HTMLElement): void {
     scn.appendChild(b);
   }
   host.appendChild(scn);
+
+  const arr = document.createElement("div");
+  arr.innerHTML = '<div class="muted" style="margin-top:10px">CHEGADAS (sensores)</div>';
+  const arriveA = document.createElement("button");
+  arriveA.className = "btn";
+  arriveA.textContent = "🚗 chegada A";
+  arriveA.onclick = () => void arrive("A", randomType());
+  const arriveB = document.createElement("button");
+  arriveB.className = "btn";
+  arriveB.textContent = "🚗 chegada B";
+  arriveB.onclick = () => void arrive("B", randomType());
+
+  let auto: ReturnType<typeof setInterval> | null = null;
+  const autoBtn = document.createElement("button");
+  autoBtn.className = "btn";
+  const setAutoLabel = () => (autoBtn.textContent = auto ? "⏹ parar auto-sim" : "▶ auto-sim chegadas");
+  setAutoLabel();
+  autoBtn.onclick = () => {
+    if (auto) {
+      clearInterval(auto);
+      auto = null;
+      setAutoLabel();
+      return;
+    }
+    auto = setInterval(() => {
+      const side: ArrivalSide = Math.random() < 0.5 ? "A" : "B";
+      void arrive(side, randomType());
+    }, 4000);
+    setAutoLabel();
+  };
+
+  arr.append(arriveA, arriveB, document.createElement("br"), autoBtn);
+  host.appendChild(arr);
 
   const ctl = document.createElement("div");
   ctl.innerHTML = '<div class="muted" style="margin-top:10px">CONTROLE</div>';

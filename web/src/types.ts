@@ -1,6 +1,7 @@
 export type PlatePosition = "front" | "rear";
 export type VehicleUnit = "tractor" | "trailer";
 export type VehicleType = "car" | "truck" | "rig" | "motorcycle";
+export type ArrivalSide = "A" | "B";
 
 export interface Plate {
   value: string;
