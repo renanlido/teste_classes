@@ -42,7 +42,7 @@ test("vehicleArrived while Idle pulls the next arrival into WaitEntry", async ()
   clp.arrive("B", "rig");
   await flow.dispatch({ type: "vehicleArrived" });
   assert.equal(flow.getState(), "WaitEntry");
-  assert.equal(flow.getFlow().operationId !== null, true);
+  assert.ok(flow.getFlow().operationId);
 });
 
 test("Idle pulls a queued arrival on enter (side + vehicleType from CLP)", async () => {
@@ -50,7 +50,6 @@ test("Idle pulls a queued arrival on enter (side + vehicleType from CLP)", async
   clp.arrive("B", "motorcycle");
   const flow = new LaneFlow(cfg(), deps(clp));
   await flow.start();
-  await flow.dispatch({ type: "vehicleArrived" });
   assert.equal(flow.getState(), "WaitEntry");
 });
 
