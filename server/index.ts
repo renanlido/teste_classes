@@ -12,6 +12,9 @@ import { ObservingCommandGate } from "./observing/ObservingCommandGate.js";
 import { ObservingAlpr } from "./observing/ObservingAlpr.js";
 import { ObservingFacial } from "./observing/ObservingFacial.js";
 import { ObservingBackend } from "./observing/ObservingBackend.js";
+import { ObservingClp } from "./observing/ObservingClp.js";
+import { FakeClp } from "../src/integrations/FakeClp.js";
+import type { EntrySensorPort } from "../src/integrations/EntrySensorPort.js";
 import { SseHub } from "./sse.js";
 import { createApiServer, type ApiContext } from "./api.js";
 import type { LaneConfig } from "../src/domain/lane/LaneConfig.js";
@@ -34,6 +37,7 @@ export const TOPICS = [
   "operation.finalized",
   "operator.intervention",
   "lane.failure",
+  "entry.arrived",
 ];
 
 const LANE_ID = "L1";
@@ -50,7 +54,7 @@ function config(): LaneConfig {
   };
 }
 
-function buildDeps(bus: InMemoryEventBus): FlowDeps {
+function buildDeps(bus: InMemoryEventBus, clp: EntrySensorPort): FlowDeps {
   return {
     gates: {
       A: new Gate(new ObservingCommandGate(new FakeGate(), bus, "A")),
@@ -69,6 +73,7 @@ function buildDeps(bus: InMemoryEventBus): FlowDeps {
     ),
     bus,
     validation: new ValidationService(),
+    clp,
   };
 }
 
@@ -76,12 +81,13 @@ export async function buildContext(): Promise<ApiContext> {
   LaneRegistry.reset();
   const bus = new InMemoryEventBus();
   const hub = new SseHub();
-  const lane = LaneRegistry.get(LANE_ID, () => Lane.create(LANE_ID, "Lane 1", config(), buildDeps(bus)));
+  const clp = new ObservingClp(new FakeClp(), bus);
+  const lane = LaneRegistry.get(LANE_ID, () => Lane.create(LANE_ID, "Lane 1", config(), buildDeps(bus, clp)));
   for (const topic of TOPICS) {
     bus.subscribe(topic, (payload) => hub.broadcast(topic, payload, Date.now()));
   }
   await lane.start();
-  return { laneId: LANE_ID, controller: new LaneController(), lane, hub, bus };
+  return { laneId: LANE_ID, controller: new LaneController(), lane, hub, bus, clp };
 }
 
 async function main(): Promise<void> {

@@ -12,6 +12,7 @@ import { FakeAlpr } from "../src/integrations/FakeAlpr.js";
 import { FakeFacial } from "../src/integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "../src/integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "../src/integrations/InMemoryEventBus.js";
+import { FakeClp } from "../src/integrations/FakeClp.js";
 import type { LaneConfig } from "../src/domain/lane/LaneConfig.js";
 import type { FlowDeps } from "../src/domain/lane/events.js";
 import type { AddressInfo } from "node:net";
@@ -25,7 +26,7 @@ function cfg(): LaneConfig {
     timeouts: { gateOpenMs: 50, carInsideMs: 5000, plateMs: 5000, backendMs: 500, exitMs: 5000 },
   };
 }
-function deps(bus: InMemoryEventBus): FlowDeps {
+function deps(bus: InMemoryEventBus, clp: FakeClp): FlowDeps {
   const g = new FakeGate();
   return {
     gates: { A: new Gate(g), B: new Gate(g), exit: new Gate(g) },
@@ -34,15 +35,17 @@ function deps(bus: InMemoryEventBus): FlowDeps {
     backend: new FakeBackendRecintos({ bookings: {}, registeredPlates: {}, sev: {} }),
     bus,
     validation: new ValidationService(),
+    clp,
   };
 }
 
 async function withServer(fn: (base: string, ctx: ApiContext) => Promise<void>) {
   LaneRegistry.reset();
   const bus = new InMemoryEventBus();
-  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps(bus)));
+  const clp = new FakeClp();
+  const lane = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps(bus, clp)));
   await lane.start();
-  const ctx: ApiContext = { laneId: "L1", controller: new LaneController(), lane, hub: new SseHub(), bus };
+  const ctx: ApiContext = { laneId: "L1", controller: new LaneController(), lane, hub: new SseHub(), bus, clp };
   const server = createApiServer(ctx);
   await new Promise<void>((r) => server.listen(0, r));
   const port = (server.address() as AddressInfo).port;
@@ -94,5 +97,19 @@ test("stream flushes an initial comment before any event", async () => {
     const text = new TextDecoder().decode(value);
     assert.equal(text.includes(":"), true);
     controller.abort();
+  });
+});
+
+test("POST /api/arrive queues a vehicle and the lane auto-starts it", async () => {
+  await withServer(async (base) => {
+    await fetch(`${base}/api/arrive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ side: "A", vehicleType: "rig" }),
+    });
+
+    const snap = (await (await fetch(`${base}/api/snapshot`)).json()) as { state: string; clp: { A: unknown[]; B: unknown[] } };
+    assert.equal(snap.state, "WaitEntry");
+    assert.deepEqual(snap.clp, { A: [], B: [] });
   });
 });

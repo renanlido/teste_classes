@@ -4,6 +4,8 @@ import type { LaneController } from "../src/LaneController.js";
 import type { EventBus } from "../src/integrations/EventBus.js";
 import type { SseHub } from "./sse.js";
 import type { FlowEvent } from "../src/domain/lane/events.js";
+import type { EntrySensorPort } from "../src/integrations/EntrySensorPort.js";
+import type { Side, VehicleType } from "../src/domain/types.js";
 
 export interface ApiContext {
   laneId: string;
@@ -11,6 +13,7 @@ export interface ApiContext {
   lane: Lane;
   hub: SseHub;
   bus: EventBus;
+  clp: EntrySensorPort;
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -32,7 +35,7 @@ export function createApiServer(ctx: ApiContext): Server {
     const url = req.url ?? "";
     try {
       if (req.method === "GET" && url === "/api/snapshot") {
-        sendJson(res, 200, ctx.lane.snapshot());
+        sendJson(res, 200, { ...ctx.lane.snapshot(), clp: ctx.clp.snapshot() });
         return;
       }
       if (req.method === "GET" && url === "/api/stream") {
@@ -44,6 +47,14 @@ export function createApiServer(ctx: ApiContext): Server {
         const parsed = JSON.parse(raw) as { event: FlowEvent };
         ctx.bus.publish("command.received", { laneId: ctx.laneId, event: parsed.event });
         await ctx.controller.command(ctx.laneId, parsed.event);
+        res.writeHead(204).end();
+        return;
+      }
+      if (req.method === "POST" && url === "/api/arrive") {
+        const raw = await readBody(req);
+        const parsed = JSON.parse(raw) as { side: Side; vehicleType: VehicleType };
+        ctx.clp.arrive(parsed.side, parsed.vehicleType);
+        await ctx.controller.command(ctx.laneId, { type: "vehicleArrived" });
         res.writeHead(204).end();
         return;
       }
