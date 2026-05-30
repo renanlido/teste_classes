@@ -9,13 +9,15 @@ export class Operation {
   heavy = false;
   booking: Booking | null = null;
   sev: SevResult | null = null;
+  private readonly seededType: VehicleType;
 
   private readonly startTime: Date;
   private endTime?: Date;
 
-  constructor(side: Side) {
+  constructor(side: Side, vehicleType: VehicleType = "car") {
     this.id = randomUUID();
     this.side = side;
+    this.seededType = vehicleType;
     this.startTime = new Date();
   }
 
@@ -24,7 +26,7 @@ export class Operation {
   }
 
   get vehicleType(): VehicleType {
-    return this.plate?.vehicleType ?? "car";
+    return this.plate?.vehicleType ?? this.seededType;
   }
 
   endOperation(): void {
