@@ -78,3 +78,16 @@ test("Failure publishes alarm on onEnter", async () => {
   await flow.start(new Failure("gate stuck"));
   assert.equal(published.some((p) => p.topic === "lane.failure"), true);
 });
+
+test("manualReset from Failure auto-starts the next queued CLP arrival", async () => {
+  const clp = new FakeClp();
+  const { d } = deps();
+  d.clp = clp;
+  const flow = new LaneFlow(cfg(), d);
+  await flow.start(new Failure("gate stuck"));
+  assert.equal(flow.getState(), "Failure");
+  clp.arrive("A", "car");
+  await flow.dispatch({ type: "manualReset" });
+  assert.equal(flow.getState(), "WaitEntry");
+  assert.ok(flow.getFlow().operationId);
+});
