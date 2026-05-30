@@ -13,14 +13,26 @@ export class Idle extends LaneStateBase {
     await flow.deps.gates.A.close();
     await flow.deps.gates.B.close();
     await flow.deps.gates.exit.close();
+    const next = flow.deps.clp.consumeNext();
+    if (!next) return;
+    flow.operation = new Operation(next.side, next.vehicleType);
+    await flow.transitionTo(new WaitEntry());
   }
 
   handle(ev: FlowEvent, flow: LaneFlowApi): LaneState | void {
-    if (ev.type !== "startOperation") {
-      this.ignore(flow, ev);
-      return;
+    if (ev.type === "startOperation") {
+      flow.operation = new Operation(ev.side);
+      return new WaitEntry();
     }
-    flow.operation = new Operation(ev.side);
-    return new WaitEntry();
+    if (ev.type === "vehicleArrived") {
+      const next = flow.deps.clp.consumeNext();
+      if (!next) {
+        this.ignore(flow, ev);
+        return;
+      }
+      flow.operation = new Operation(next.side, next.vehicleType);
+      return new WaitEntry();
+    }
+    this.ignore(flow, ev);
   }
 }
