@@ -25,9 +25,15 @@ test("consumeNext pops global FIFO and drains in arrival order", () => {
   clp.arrive("A", "car");
   clp.arrive("B", "rig");
   clp.arrive("A", "truck");
-  assert.equal(clp.consumeNext()?.side, "A");
-  assert.equal(clp.consumeNext()?.side, "B");
-  assert.equal(clp.consumeNext()?.vehicleType, "truck");
+  const first = clp.consumeNext();
+  assert.equal(first?.side, "A");
+  assert.equal(first?.seq, 1);
+  const second = clp.consumeNext();
+  assert.equal(second?.side, "B");
+  assert.equal(second?.seq, 2);
+  const third = clp.consumeNext();
+  assert.equal(third?.vehicleType, "truck");
+  assert.equal(third?.seq, 3);
   assert.equal(clp.consumeNext(), null);
 });
 
@@ -45,4 +51,14 @@ test("snapshot returns each side queue in seq order", () => {
     snap.B.map((x) => x.vehicleType),
     ["motorcycle"],
   );
+});
+
+test("peekNext is non-destructive and works with one side empty", () => {
+  const clp = new FakeClp();
+  clp.arrive("A", "car");
+  clp.arrive("A", "rig");
+  assert.equal(clp.peekNext()?.seq, 1);
+  assert.equal(clp.peekNext()?.seq, 1);
+  assert.equal(clp.consumeNext()?.seq, 1);
+  assert.equal(clp.peekNext()?.seq, 2);
 });
