@@ -1,89 +1,101 @@
-# ADR-0001: CLP como fonte de verdade, operação autônoma com conclusão sob o sistema (fail-secure) e recuperação durável
+# ADR-0001: Modelo operacional da pista — modos, autoridade de liberação e segurança
 
 ## Status
 
-Aceito (2026-05-30)
+Aceito (2026-05-31)
 
 ## Contexto
 
-O LaneFlow é um simulador de uma eclusa portuária (pista de entrada/saída de veículos). Uma feature recente passou a derivar lado (A/B) e tipo de veículo de uma CLP simulada (`FakeClp` atrás de `EntrySensorPort`); chegadas iniciam operações automaticamente em FIFO global. A intenção declarada do projeto é aproximar a simulação ao máximo do que seria o sistema real.
+O LaneFlow simula uma eclusa portuária (pista de entrada/saída de veículos) controlada por uma CLP/PLC. Uma feature recente passou a derivar lado e tipo de veículo de uma CLP simulada e a iniciar operações automaticamente. Uma revisão adversarial expôs que não havia um modelo operacional definido: quem decide a liberação da cancela, o que acontece sem o backend ("sistema"), como a pista se comporta fora de operação, em manutenção, manobra ou emergência, e o que governa as funções de segurança (anti-esmagamento).
 
-Uma revisão adversarial da feature expôs comportamentos não definidos: os caminhos de reset roteiam por `Idle.onEnter`, que agora puxa a próxima chegada — então limpar uma falha técnica passa a iniciar o próximo veículo sem um comportamento de degradação/recuperação definido. Não há comportamento definido para queda do backend (integração Recintos/"sistema") nem para recuperação após restart do processo.
+O domínio é controle de acesso portuário (ISPS) e a pista é uma máquina de barreiras motorizadas — sujeita às normas de segurança de máquinas. Pesquisa de normas (EN 12453/12445/12978 para cancelas, IEC 60204-1 cl.9 para modos/seletor, EN ISO 13850 para parada de emergência, ISO 13849-1/IEC 62061 para a função de segurança, ISO 14118 para prevenção de partida inesperada, e o padrão eclusa/sas/sally-port para intertravamento) mostrou que o comportamento precisa ser definido por modo, com precedência e funções de segurança sempre ativas.
 
-O spec anterior do CLP (`docs/superpowers/specs/2026-05-29-clp-side-detection-design.md`) deixou explicitamente fora de escopo "persisting the queue across restarts" e a construção de adapter real — ou seja, recuperação e o limite "com sistema vs. sem sistema" nunca foram decididos.
-
-O domínio é controle de acesso portuário (ISPS): a autorização/segurança é garantida pela integração com o backend; o sequenciamento físico é função do PLC. É preciso um modelo operacional definido antes de construir mais — em especial o limite entre o que roda sem o backend e o que não roda, e como o estado sobrevive/recupera a um restart.
+É preciso registrar o modelo operacional antes de construir as próximas features (gating, override manual, recuperação), porque ele define o que cada estado pode fazer e onde a CLP **não** decide.
 
 ## Decisão
 
-Vamos tratar a CLP/PLC como **fonte de verdade do estado físico da pista**, persistida de forma **durável** (sobrevive a restart real do processo); o supervisório (backend) **relê o estado da CLP** ao (re)conectar e reconstrói seu modelo — nunca tratando o próprio cache como autoritativo.
+Definimos o modelo operacional da pista em três eixos: **modos de operação**, **autoridade de liberação** e **semântica de segurança**.
 
-Vamos permitir que uma operação **inicie e seja sequenciada autonomamente pela CLP sem o backend online** (autonomia de PLC, Nível 1 ISA-95), mas **exigir o backend online — ou um override manual auditado — para autorizar/concluir** a operação. Na perda do backend, a cancela é **fail-secure** (permanece fechada; conclusão bloqueada).
+**1. Modos de operação** (configuráveis, com precedência **Emergência > Manutenção > Manobra > Operação**):
 
-Salvaguardas que fazem parte desta decisão:
+- **Operação**: sequenciamento automático habilitado. A pista só inicia um ciclo neste modo e **somente se todas as funções de segurança estiverem OK** (checagem antes de cada ciclo). Autoridade: supervisório.
+- **Manutenção**: sobrescreve Operação. Autorizada por **chave física** (modelada com semântica de key-switch, não só flag de software). Cancelas livres a **comandos manuais** (semântica hold-to-run) via supervisório; sensores de processo ignorados, **sensores de segurança sempre ativos**.
+- **Manobra**: abre uma sequência de cancelas para o motorista sair e/ou a cancela traseira para dar ré (depende da configuração da lane). Preserva o intertravamento "uma cancela aberta por vez". Autoridade: supervisório.
+- **Emergência**: **abre tudo** (emergência-ABRE, função distinta do E-STOP que apenas para). Acionável por **botoeira** (com trava até reset manual) e pelo supervisório. Precedência máxima, efetiva em todos os modos.
 
-- **Comando sobrescreve estado:** mesmo com a CLP como fonte de verdade do *estado*, comandos do supervisório podem **escrever/sobrescrever intenções** na CLP (relação bidirecional: lê estado, comanda/sobrescreve).
-- **Identificador de operação na CLP:** a CLP mantém um **identificador estável da operação** no estado retido, como chave de correlação para o sistema recuperar/conciliar.
-- **Placa não é dado da CLP:** placas vêm do ALPR. Na recuperação, o sistema **re-tenta o reconhecimento (ALPR)**; em falha, **pede input manual** ao operador. Com o enlace sistema↔CLP caído, o operador aciona um **guarda para fotografar placas/documentos**, gerando **registro de entrada manual posterior**, reconciliado quando o sistema volta (store-and-forward, marcado `source=manual`).
-- **Mecanismo de persistência:** arquivo JSON sem dependência nativa (`FileStateStore` atrás de um port `LaneStateStore`), como stand-in do DB retentivo do PLC. A reconstrução no boot leva a um **estado seguro** ("first-scan guard"): reentra no passo retido se válido; senão cai num estado seguro que exige confirmação.
+Fora de Operação (modo desligado, com energia), a postura de repouso das cancelas é **baixadas/fechadas** e elas **não respondem a sensores de processo**.
 
-Escopo: este ADR registra o **modelo operacional**. A implementação é decomposta em três specs construídos na ordem **B → C → A**: (B) modo degradado/gating fail-secure; (C) override manual + reconciliação; (A) recuperação durável e telemetria retida da CLP. Esta decisão **reverte** o "no persistence across restarts" do spec anterior do CLP.
+**2. Autoridade de liberação (dentro de Operação).** O **sistema (backend)** toma as decisões de negócio: facial, ALPR e a **liberação** (autorização de abrir a cancela). A CLP **sequencia o início físico autonomamente** (chegada/sensores, só se segurança OK), mas **nunca decide a liberação**: ao chegar no ponto de regra de negócio, **sempre aguarda** um comando de liberação explícito — (a) **comando do sistema** (online), ou (b) **botoeira manual**. Mesmo com a CLP como fonte de verdade do estado, comandos do supervisório podem **sobrescrever intenções** na CLP (relação bidirecional). Offline: a liberação só sai pela **botoeira manual**, com registro manual (guarda fotografa placa/documento) e reconciliação diferida quando o sistema volta (`source=manual`).
+
+**3. Semântica de segurança** (adotada das normas, não opcional para fidelidade):
+
+- Checagem das funções de segurança **antes de cada ciclo**; não inicia/entra em Operação com dispositivo de segurança em falha (EN 12453, UL 325).
+- Anti-esmagamento durante o ciclo → **para e reverte** (EN 12453), não apenas para.
+- **Sem religamento automático** após trip de segurança ou emergência; exige **reset manual** deliberado (ISO 13849-1, ISO 14118).
+- **Modos não auto-restauram no boot**; a pista sobe em estado seguro e o operador re-autoriza o modo.
+- Funções de segurança **sempre ativas**, inclusive em Manutenção.
+- **Fail-state por cancela na perda de energia**: cancela de **entrada fail-secure** (fechada), cancela de **saída/interna fail-open** (abre) para egresso de quem está dentro da eclusa. (Distinto da postura de repouso "baixadas" do modo Operação desligado, que é intencional e energizada.)
+
+Escopo: este ADR registra o **modelo**. A implementação é decomposta em specs (modos+gating, override manual+reconciliação, recuperação durável — ver ADR-0003) construídos um a um. O "Modo Manobra" (modo operacional) é relacionado, porém distinto, do estado de fluxo `Maneuver` já existente por operação; a reconciliação dos dois é detalhe dos specs. O protocolo de integração com o PLC é decidido no ADR-0002.
 
 ## Alternativas Consideradas
 
-### Alternativa A: Manter apenas em memória, sem persistência (decisão anterior)
-- **Prós**: simples; zero I/O; sem novo modo de falha de arquivo.
-- **Contras**: estado perdido em qualquer restart; sem recuperação de operação em andamento; não simula o DB retentivo de um PLC real.
-- **Por que descartada**: o objetivo declarado é aproximar do sistema real, e a recuperação pós-restart é central na pergunta que originou esta decisão.
+### Alternativa A: CLP decide a liberação autonomamente (autonomia na regra de negócio)
 
-### Alternativa B: Autonomia total (inicia E conclui sem o backend)
-- **Prós**: a pista nunca trava por queda do backend.
-- **Contras**: viola ISPS (autorizar acesso sem o sistema que garante a segurança); conclusões sem validação Recintos nem auditoria.
-- **Por que descartada**: concluir uma operação sem o sistema é inaceitável no domínio portuário — as integrações é que garantem a segurança.
+- **Prós**: pista não trava esperando o sistema; menos acoplamento.
+- **Contras**: a CLP autorizaria acesso sem facial/ALPR/regra do backend; viola ISPS; conclusões sem auditoria.
+- **Por que descartada**: a CLP **nunca** pode decidir liberação no ponto de regra de negócio — as integrações é que garantem a segurança portuária. (Rejeitada explicitamente pelo dono do domínio.)
 
-### Alternativa C: Exigir backend online para tudo (sem início autônomo)
-- **Prós**: nunca opera sem regra de negócio; modelo mais simples de gating.
-- **Contras**: qualquer queda do backend para a pista por completo; ignora a autonomia real do PLC (Nível 1 roda sem supervisório); sem caminho de degradação.
-- **Por que descartada**: contraria a prática industrial (PLC autônomo) e a resiliência desejada.
+### Alternativa B: Sistema obrigatório para qualquer liberação (sem botoeira manual)
 
-### Alternativa (mecanismo): SQLite (embutido `node:sqlite` ou externo) em vez de JSON
-- **Prós**: "banco de verdade"; consultas; WAL contra escrita parcial.
-- **Contras**: `node:sqlite` é experimental e acopla à versão do Node; externo é dependência nativa, contra o ethos do projeto.
-- **Por que descartada**: JSON é suficiente para um simulador e sem dep nativa; revisitável se houver contenção/corrupção.
+- **Prós**: toda liberação passa por regra de negócio.
+- **Contras**: queda do sistema paralisa a pista por completo; sem caminho operável degradado.
+- **Por que descartada**: precisa existir liberação por **botoeira manual** (com registro/reconciliação) para operar offline e como override.
 
-### Alternativa (profundidade da recuperação): rehidratação exata do estado
-- **Prós**: veículo no meio do ciclo retoma exatamente de onde parou.
-- **Contras**: frágil (timers em andamento, capturas ALPR em curso); menos fiel ao fail-secure.
-- **Por que descartada**: reconstrução para estado seguro é mais fiel ao first-scan guard/fail-secure do PLC real.
+### Alternativa C: Sem modos — um único comportamento sempre ativo
+
+- **Prós**: máquina de estados mais simples.
+- **Contras**: não distingue operação/manutenção/manobra/emergência; viola IEC 60204-1 (seletor de modo, hold-to-run em manutenção) e a precedência de emergência; impede manutenção segura.
+- **Por que descartada**: os modos com precedência são exigência normativa e operacional.
+
+### Alternativa D: Emergência como E-STOP (apenas parar)
+
+- **Prós**: implementação trivial (corta energia/para).
+- **Contras**: parar não é o requisito — emergência precisa **abrir** as cancelas (egresso/incêndio); confunde duas funções distintas (EN ISO 13850 separa parada de liberação).
+- **Por que descartada**: emergência aqui é **abrir tudo**; o E-STOP é uma função separada (não objeto desta decisão).
 
 ## Consequências
 
 ### Positivas
-- O estado da CLP sobrevive a restart real do processo; a recuperação reconstrói operação em andamento e fila.
-- Comportamento definido e **fail-secure** na queda do backend — a segurança portuária (ISPS) é preservada.
-- Caminho de degradação operável (override manual auditado) evita parada total, com rastreabilidade (quem/quando/motivo).
-- Modelo fiel ao PLC real (dados retidos realistas; placa fora da CLP) facilita o futuro adapter `snap7`/OPC UA documentado no spec do CLP.
+
+- Comportamento definido e auditável por modo, alinhado a EN 12453 / IEC 60204-1 / EN ISO 13850 / ISO 13849-1 / ISO 14118.
+- A CLP nunca autoriza acesso sozinha — a segurança portuária (ISPS) é preservada.
+- Caminho degradado operável (botoeira + registro manual + reconciliação) evita parada total com rastreabilidade.
+- Funções de segurança sempre ativas e sem religamento automático reduzem risco de partida inesperada.
 
 ### Negativas
-- Reverte a decisão "sem persistência": adiciona store durável, I/O de arquivo e um **novo modo de falha** (arquivo corrompido/obsoleto) que exige guarda de validação no boot.
-- Aumenta a complexidade da máquina de estados: novos estados/intenções (modo degradado, override manual), anotação obrigatória e fila de reconciliação.
-- O override manual é um **bypass sensível de segurança**: exige auditoria, limite temporal e reconciliação corretos; há risco se o log/reconciliação for incompleto.
-- A recuperação de placa via re-leitura ALPR/input manual adiciona um ramo de recuperação e acopla os blocos A e C.
+
+- Aumenta muito a complexidade: máquina de modos com precedência, gating de liberação, override manual e reset manual obrigatório.
+- Modelar chave física/botoeira (não só flags) e hold-to-run exige superfície extra no simulador e no painel.
+- Fail-state por cancela exige distinguir "repouso de modo" de "fail por perda de energia", e configurar por lane.
+- Reconciliar "Modo Manobra" (modo) com o estado de fluxo `Maneuver` existente pode exigir refatorar a máquina de estados.
 
 ### Neutras
-- Introduz o conceito explícito "backend online?" e um controle para alterná-lo no simulador (simular queda da integração).
-- A persistência em JSON é detalhe de simulação; o adapter real usará o DB retentivo do PLC — o que importa para portabilidade é a **forma dos dados**, não o arquivo.
+
+- Introduz o conceito de "modo da pista" como camada acima do fluxo por operação.
+- Introduz "backend online?" e controles de modo (chave/botoeira/supervisório) no simulador.
+- Os limites de força/PL/SIL (EN 12445/ISO 13849) são do PLC real; no simulador modelamos a semântica (trip/reverte/reset), não os valores físicos.
 
 ## Sinais de que devemos revisitar
 
-- Se o adapter real (`snap7`/OPC UA em S7-1200/1500) não comportar a forma do estado retido/identificador de operação escolhido, revisitar o modelo de persistência.
-- Se testes de restart mostrarem operações perdidas ou duplicadas na reconstrução (mismatch de reconciliação), revisitar a profundidade da reconstrução.
-- Se eventos de override manual não reconciliarem de forma limpa na volta do backend (entradas órfãs ou contadas em dobro), revisitar o store-and-forward.
-- Se o arquivo JSON virar ponto de corrupção/contenção (escritas concorrentes ou parciais), migrar o mecanismo (SQLite/WAL).
+- Se a reconciliação entre "Modo Manobra" e o estado `Maneuver` existente gerar estados ambíguos ou inalcançáveis nos testes, revisitar a modelagem de modos.
+- Se a precedência de modos puder ser burlada por algum caminho de software (ex.: Operação iniciar durante Emergência), revisitar a aplicação da precedência.
+- Se o fail-state por cancela conflitar com a postura de repouso "baixadas" e gerar comportamento incoerente em testes de queda de energia, revisitar a distinção.
+- Se a exigência de reset manual após trip/emergência travar fluxos legítimos de forma inaceitável na operação, revisitar a política de reset.
 
 ## Referências
 
-- `docs/superpowers/specs/2026-05-29-clp-side-detection-design.md` — decisão anterior "no persistence across restarts" e seam do adapter Siemens (parcialmente revertida por este ADR).
-- `docs/superpowers/plans/2026-05-29-clp-side-detection.md` — implementação do CLP simulado (`EntrySensorPort`/`FakeClp`).
-- Síntese de práticas de mercado consolidada nesta decisão: ISA-95 (camadas), autonomia de PLC sem SCADA, ISPS (fail-secure em acesso portuário), ISA-18.2 (log/limite de override manual), store-and-forward (reconciliação diferida), OPC UA reconnect/ResendData (resync do supervisório).
-- Specs futuros desta decisão (a criar): bloco B (modo degradado/gating), bloco C (override manual + reconciliação), bloco A (recuperação durável + telemetria retida).
+- `docs/superpowers/specs/2026-05-29-clp-side-detection-design.md` — feature do CLP simulado que originou a discussão.
+- ADR-0002 — protocolo de integração com o PLC (Modbus primário, OPC-UA secundário).
+- ADR-0003 — recuperação durável e CLP como fonte de verdade do estado físico.
+- Normas: EN 12453:2017 / EN 12445:2017 (segurança e teste de cancelas), EN 12978 (dispositivos de segurança), IEC 60204-1 cl.9 (seletor de modo, hold-to-run, manutenção), EN ISO 13850 (parada de emergência), ISO 13849-1 / IEC 62061 (PL/SIL da função de segurança), ISO 14118 (prevenção de partida inesperada), ISO 12100 (avaliação de risco), padrão sally-port/sas (intertravamento "uma cancela por vez").
