@@ -14,6 +14,8 @@ function flowFake() {
     cfg: {} as never,
     deps: {} as never,
     topology: {} as never,
+    mode: "operation",
+    safetyOk: true,
     transitionTo: async () => { calls.push("transitionTo"); },
     fail: () => { calls.push("fail"); },
     armWatchdog: () => { calls.push("armWatchdog"); },
