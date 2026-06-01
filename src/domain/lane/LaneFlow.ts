@@ -102,7 +102,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
     if (ev.type === "safetyTrip") {
       this.safetyOkValue = false;
       this.deps.bus?.publish("safety.status", { safetyOk: false });
-      if (this.modeValue === "operation" && this.operation) {
+      if (this.modeValue === "operation" && this.operation && this.getState() !== "SafetyStop") {
         await this.transitionTo(new SafetyStop("anti-crush"));
       }
       return true;
