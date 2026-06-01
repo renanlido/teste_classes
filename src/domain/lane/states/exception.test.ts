@@ -23,7 +23,7 @@ function gate(): CommandGate {
   return {
     async openGate() { return { type: "success", message: "ok" }; },
     async closeGate() { return true; },
-    async queryGateState() { return "closed"; },
+    async queryGateState() { return "open"; },
   };
 }
 function deps(): { d: FlowDeps; published: { topic: string; payload: unknown }[] } {
@@ -41,12 +41,15 @@ function deps(): { d: FlowDeps; published: { topic: string; payload: unknown }[]
   return { d, published };
 }
 
-test("Intervention operatorApprove -> ReleaseExit", () => {
+test("Intervention operatorApprove -> ReleaseExit", async () => {
   const { d } = deps();
   const flow = new LaneFlow(cfg(), d);
   flow.operation = new Operation("A");
-  const next = new Intervention("no SEV").handle({ type: "operatorApprove" }, flow);
-  assert.equal(next?.name, "ReleaseExit");
+  await flow.start(new Intervention("no SEV"));
+  await flow.dispatch({ type: "operatorApprove" });
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
+  assert.equal(flow.getState(), "ReleaseExit");
 });
 
 test("Intervention operatorAbort -> Finalize", () => {

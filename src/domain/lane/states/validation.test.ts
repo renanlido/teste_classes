@@ -44,6 +44,8 @@ test("Validation ok -> ReleaseExit", async () => {
   const flow = new LaneFlow(cfg(), deps(true));
   flow.operation = new Operation("A");
   await flow.start(new Validation());
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
   assert.equal(flow.getState(), "ReleaseExit");
 });
 
@@ -86,5 +88,7 @@ test("slow validation transitions exactly once to ReleaseExit", async () => {
   const flow = new LaneFlow(cfg(), d);
   flow.operation = new Operation("A");
   await flow.start(new Validation());
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
   assert.equal(flow.getState(), "ReleaseExit");
 });

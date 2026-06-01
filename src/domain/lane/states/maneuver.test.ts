@@ -56,6 +56,8 @@ test("Intervention correctPlate pushes a plate and re-validates -> ReleaseExit",
   await flow.dispatch({ type: "correctPlate", value: "ABC1D23" });
   assert.equal(flow.operation?.plate?.value, "ABC1D23");
   assert.equal(flow.operation?.plate?.corrected, true);
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
   assert.equal(flow.getState(), "ReleaseExit");
 });
 

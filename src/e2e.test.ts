@@ -52,6 +52,8 @@ test("happy path with facial + SEV returns to Idle and publishes finalization", 
   await lane.signal({ type: "personDetected", person: { id: "p1", name: "Driver" } });
   await lane.signal({ type: "weightMeasured", heavy: true });
   await lane.signal({ type: "carAtTotem" });
+  assert.equal(lane.getState(), "WaitRelease");
+  await lane.releaseBySystem();
   assert.equal(lane.getState(), "ReleaseExit");
   await lane.signal({ type: "endOperation" });
   await lane.signal({ type: "carLeft" });
@@ -70,6 +72,8 @@ test("business block leads to Intervention and operator approve resumes exit", a
   await lane.signal({ type: "carAtTotem" });
   assert.equal(lane.getState(), "Intervention");
   await lane.approve();
+  assert.equal(lane.getState(), "WaitRelease");
+  await lane.releaseBySystem();
   assert.equal(lane.getState(), "ReleaseExit");
 });
 
