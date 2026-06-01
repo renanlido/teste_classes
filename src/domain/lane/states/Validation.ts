@@ -1,5 +1,5 @@
 import { LaneStateBase, type LaneFlowApi } from "../LaneStateBase.js";
-import { ReleaseExit } from "./ReleaseExit.js";
+import { WaitRelease } from "./WaitRelease.js";
 import { Intervention } from "./Intervention.js";
 
 export class Validation extends LaneStateBase {
@@ -12,6 +12,6 @@ export class Validation extends LaneStateBase {
       return;
     }
     const res = await flow.deps.validation.evaluate(flow.cfg, op, flow.deps.backend);
-    await flow.transitionTo(res.ok ? new ReleaseExit() : new Intervention(res.reason ?? "block"));
+    await flow.transitionTo(res.ok ? new WaitRelease() : new Intervention(res.reason ?? "block"));
   }
 }

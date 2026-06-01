@@ -1,6 +1,6 @@
 import { LaneStateBase, type LaneFlowApi, type LaneState } from "../LaneStateBase.js";
 import type { FlowEvent } from "../events.js";
-import { ReleaseExit } from "./ReleaseExit.js";
+import { WaitRelease } from "./WaitRelease.js";
 import { Finalize } from "./Finalize.js";
 import { Validation } from "./Validation.js";
 import { Maneuver } from "./Maneuver.js";
@@ -20,7 +20,7 @@ export class Intervention extends LaneStateBase {
   }
 
   handle(ev: FlowEvent, flow: LaneFlowApi): LaneState | void {
-    if (ev.type === "operatorApprove") return new ReleaseExit();
+    if (ev.type === "operatorApprove") return new WaitRelease();
     if (ev.type === "operatorAbort") return new Finalize();
     if (ev.type === "operatorCancel") return new Maneuver();
     if (ev.type === "correctPlate") {
