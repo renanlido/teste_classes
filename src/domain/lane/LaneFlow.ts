@@ -5,6 +5,7 @@ import type { LaneState, LaneFlowApi } from "./LaneStateBase.js";
 import type { Operation } from "./Operation.js";
 import { TwoEntriesOneExit } from "./LaneTopology.js";
 import type { LaneTopology } from "./LaneTopology.js";
+import { SafetyStop } from "./states/SafetyStop.js";
 import { canEnterMode, type LaneMode, type ModeContext } from "./LaneMode.js";
 
 export abstract class LaneFlowBase {
@@ -101,6 +102,9 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
     if (ev.type === "safetyTrip") {
       this.safetyOkValue = false;
       this.deps.bus?.publish("safety.status", { safetyOk: false });
+      if (this.modeValue === "operation" && this.operation) {
+        await this.transitionTo(new SafetyStop("anti-crush"));
+      }
       return true;
     }
     if (ev.type === "safetyClear") {
