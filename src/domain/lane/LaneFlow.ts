@@ -65,6 +65,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
     this.modeValue = target;
     this.deps.bus?.publish("lane.mode", { mode: target });
     this.deps.bus?.publish("mode.changed", { mode: target });
+    if (target !== "operation") this.clearWatchdog();
     if (target === "emergency") await this.openAllGates();
   }
 
@@ -89,6 +90,7 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
       this.emergencyLatched = false;
       this.modeValue = "operation";
       this.deps.bus?.publish("lane.mode", { mode: "operation" });
+      this.deps.bus?.publish("mode.changed", { mode: "operation" });
       await this.transitionTo(this.topology.initialState());
       return true;
     }

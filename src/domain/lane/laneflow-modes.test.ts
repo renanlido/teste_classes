@@ -81,3 +81,13 @@ test("operation does not start a cycle while safety is tripped", async () => {
   await flow.dispatch({ type: "startOperation", side: "A" });
   assert.equal(flow.getState(), "WaitEntry");
 });
+
+test("emergency opens all gates", async () => {
+  const d = deps();
+  const flow = new LaneFlow(cfg(), d);
+  await flow.start();
+  await flow.dispatch({ type: "emergencyButton" });
+  assert.equal(d.gates.A.state, "open");
+  assert.equal(d.gates.B.state, "open");
+  assert.equal(d.gates.exit.state, "open");
+});
