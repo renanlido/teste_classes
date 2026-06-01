@@ -6,6 +6,7 @@ import type { BackendPort } from "../../integrations/BackendPort.js";
 import type { EventBus } from "../../integrations/EventBus.js";
 import type { ValidationService } from "../ValidationService.js";
 import type { EntrySensorPort } from "../../integrations/EntrySensorPort.js";
+import type { LaneMode } from "./LaneMode.js";
 
 export type FlowEvent =
   | { type: "startOperation"; side: Side }
@@ -27,6 +28,14 @@ export type FlowEvent =
   | { type: "operatorCancel" }
   | { type: "carReversed" }
   | { type: "vehicleArrived" }
+  | { type: "systemRelease" }
+  | { type: "manualRelease" }
+  | { type: "setMode"; mode: LaneMode }
+  | { type: "keySwitch"; on: boolean }
+  | { type: "emergencyButton" }
+  | { type: "emergencyReset" }
+  | { type: "safetyTrip" }
+  | { type: "safetyClear" }
   | { type: "timeout" };
 
 export const DATA_EVENTS = ["plateRead", "personDetected", "weightMeasured"] as const;
@@ -53,6 +62,10 @@ export const DEVICE_SIGNAL_TYPES = [
   "weightMeasured",
   "endOperation",
   "vehicleArrived",
+  "manualRelease",
+  "emergencyButton",
+  "safetyTrip",
+  "safetyClear",
 ] as const;
 
 export type DeviceSignal = Extract<FlowEvent, { type: (typeof DEVICE_SIGNAL_TYPES)[number] }>;
