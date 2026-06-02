@@ -70,3 +70,7 @@ Escopo: esta decisão é sobre o **protocolo de integração e o formato do cont
 - `docs/superpowers/specs/2026-05-29-clp-side-detection-design.md` — seção "Real adapter path" (premissa snap7, revisada por este ADR).
 - ADR-0001 — modelo operacional (modos/autoridade/segurança) que o contrato de dados precisa expor.
 - ADR-0003 — recuperação durável; depende do formato do estado retido que este protocolo carrega.
+
+## Status de implementação
+
+**Documentado, não construído.** Nenhum adapter Modbus ou OPC-UA real foi implementado; o simulador segue 100% com `FakeClp` (em memória). O `EntrySensorPort` é o seam onde o adapter Modbus (primário) / OPC-UA (secundário) entrará. Esta decisão fixa o protocolo e o formato do contrato de dados para quando o adapter real for construído.

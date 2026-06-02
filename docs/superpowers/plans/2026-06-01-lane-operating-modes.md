@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript ESM, `.js` import extensions, `node:test` via `tsx`. Code/commits in English; no comments in code; no `if/else`/`else if` (early return).
 
-**Spec:** `docs/superpowers/specs/2026-05-31-lane-operating-modes-design.md` · **ADR:** `docs/adr/0001-clp-fonte-de-verdade-modo-degradado-recuperacao.md`
+**Spec:** `docs/superpowers/specs/2026-05-31-lane-operating-modes-design.md` · **ADR:** `docs/adr/0001-modelo-operacional-modos-liberacao-seguranca.md`
 
 **Order:** T1 LaneMode+resolver → T2 events → T3 LaneFlowApi → T4 LaneFlow mode/safety/gating → T5 WaitRelease+reroute → T6 SafetyStop+trip routing → T7 Lane intentions → T8 migration ripple + full verification.
 

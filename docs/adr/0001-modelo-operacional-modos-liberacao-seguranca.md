@@ -99,3 +99,21 @@ Escopo: este ADR registra o **modelo**. A implementação é decomposta em specs
 - ADR-0002 — protocolo de integração com o PLC (Modbus primário, OPC-UA secundário).
 - ADR-0003 — recuperação durável e CLP como fonte de verdade do estado físico.
 - Normas: EN 12453:2017 / EN 12445:2017 (segurança e teste de cancelas), EN 12978 (dispositivos de segurança), IEC 60204-1 cl.9 (seletor de modo, hold-to-run, manutenção), EN ISO 13850 (parada de emergência), ISO 13849-1 / IEC 62061 (PL/SIL da função de segurança), ISO 14118 (prevenção de partida inesperada), ISO 12100 (avaliação de risco), padrão sally-port/sas (intertravamento "uma cancela por vez").
+
+## Status de implementação
+
+**Implementado e mesclado na `main`** (bloco de modos):
+
+- Modos `operation`/`maintenance`/`maneuver`/`emergency` com precedência e autoridade (chave/botoeira/supervisório) em `LaneFlow`/`LaneMode`; gating do ciclo por modo.
+- Release-gating: estado `WaitRelease`; a saída só abre por `systemRelease` (sistema) ou `manualRelease` (botoeira). `Validation`/`Intervention` roteiam para `WaitRelease`.
+- Segurança: estado dedicado `SafetyStop` (anti-esmagamento → fecha cancelas, publica `lane.safety`; `manualReset` só após `safetyClear`). Guarda em `Idle.onEnter` (não auto-inicia com `safetyOk` falso nem fora de `operation`).
+- Superfície: `POST /api/control` (intenções da `Lane`), `mode` no `/api/snapshot`, tópicos SSE de modo/segurança, painel MODOS + views WaitRelease/SafetyStop + badge no web.
+
+Refinamentos da implementação (decisão preservada):
+
+- A parada de segurança virou um **estado dedicado `SafetyStop`** publicando `lane.safety`, em vez de reusar `Blocked`/`Failure` como o ADR cogitava.
+- Comandos de modo/liberação/segurança entram por `POST /api/control` (fora do `LaneController`), pois os supervisórios não são `DeviceSignal`.
+
+Pendente: o **"Modo Manobra"** só é alcançável a partir de `operation` — dirigir o fluxo `Maneuver` completo pelo modo é follow-up; o tópico **`safety.status`** ainda não tem consumidor no web; o **override manual + reconciliação** (bloco C) e a **recuperação durável** (ADR-0003) seguem como futuros.
+
+Refs: spec `docs/superpowers/specs/2026-05-31-lane-operating-modes-design.md`; planos `docs/superpowers/plans/2026-06-01-lane-operating-modes.md` (domínio) e `2026-06-01-lane-operating-modes-surface.md` (server+web).

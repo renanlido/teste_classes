@@ -80,3 +80,7 @@ Escopo: persistência durável do estado físico e recuperação para estado seg
 - ADR-0001 — modelo operacional (o que é estado físico vs. decisão de negócio; reset/sem auto-restart).
 - ADR-0002 — protocolo/contrato (Modbus/OPC-UA) que carrega o estado retido.
 - ISO 14118 (prevenção de partida inesperada), prática de DB retentivo + resync do supervisório (OPC-UA ResendData / leitura completa de registradores Modbus).
+
+## Status de implementação
+
+**Não implementado.** Nenhuma persistência durável (`FileStateStore`/`LaneStateStore`), reconstrução no boot ou recuperação de placa por re-leitura foi construída; o estado da pista segue **em memória** (perdido no restart, como hoje). Bloco futuro — depende do contrato do ADR-0002.
