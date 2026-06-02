@@ -13,6 +13,7 @@ export class Idle extends LaneStateBase {
     await flow.deps.gates.A.close();
     await flow.deps.gates.B.close();
     await flow.deps.gates.exit.close();
+    if (flow.mode !== "operation" || !flow.safetyOk) return;
     const next = flow.deps.clp.consumeNext();
     if (!next) return;
     flow.operation = new Operation(next.side, next.vehicleType);

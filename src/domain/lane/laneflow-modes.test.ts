@@ -91,3 +91,18 @@ test("emergency opens all gates", async () => {
   assert.equal(d.gates.B.state, "open");
   assert.equal(d.gates.exit.state, "open");
 });
+
+test("after emergencyReset with safety tripped, a queued arrival does not auto-start", async () => {
+  const d = deps();
+  const flow = new LaneFlow(cfg(), d);
+  await flow.start();
+  await flow.dispatch({ type: "safetyTrip" });
+  await flow.dispatch({ type: "emergencyButton" });
+  d.clp.arrive("A", "car");
+  await flow.dispatch({ type: "emergencyReset" });
+  assert.equal(flow.getState(), "Idle");
+  assert.equal(flow.safetyOk, false);
+  await flow.dispatch({ type: "safetyClear" });
+  await flow.dispatch({ type: "vehicleArrived" });
+  assert.equal(flow.getState(), "WaitEntry");
+});
