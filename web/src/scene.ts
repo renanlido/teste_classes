@@ -23,6 +23,7 @@ export class Scene {
   private A: SideState = { cars: [], active: null };
   private B: SideState = { cars: [], active: null };
   private activeSide: "A" | "B" | null = null;
+  private badge!: HTMLDivElement;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -55,6 +56,7 @@ export class Scene {
     this.gateExit = this.el("boom", { left: "608px", top: "119px" });
     this.el("qlabel", { left: "40px", top: "44px" }, "FILA A");
     this.el("qlabel", { left: "40px", top: "244px" }, "FILA B");
+    this.badge = this.el("qlabel", { left: "560px", top: "16px" }, "modo: operação");
     this.fillQueue("A");
     this.fillQueue("B");
   }
@@ -129,6 +131,14 @@ export class Scene {
     }
     if (msg.topic === "entry.arrived") {
       this.addArrival(String(p.side) === "B" ? "B" : "A", String(p.vehicleType));
+      return;
+    }
+    if (msg.topic === "lane.mode" || msg.topic === "mode.changed") {
+      this.badge.textContent = `modo: ${String(p.mode)}`;
+      return;
+    }
+    if (msg.topic === "lane.safety") {
+      this.badge.textContent = `⚠ SAFETY STOP: ${String(p.reason)}`;
       return;
     }
     if (msg.topic === "lane.state") {
