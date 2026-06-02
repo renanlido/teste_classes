@@ -38,6 +38,11 @@ export const TOPICS = [
   "operator.intervention",
   "lane.failure",
   "entry.arrived",
+  "lane.mode",
+  "mode.changed",
+  "safety.status",
+  "release.waiting",
+  "lane.safety",
 ];
 
 const LANE_ID = "L1";

@@ -113,3 +113,16 @@ test("POST /api/arrive queues a vehicle and the lane auto-starts it", async () =
     assert.deepEqual(snap.clp, { A: [], B: [] });
   });
 });
+
+test("POST /api/control setMode emergency is reflected in the snapshot mode", async () => {
+  await withServer(async (base) => {
+    await fetch(`${base}/api/control`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "emergency" }),
+    });
+
+    const snap = (await (await fetch(`${base}/api/snapshot`)).json()) as { mode: string };
+    assert.equal(snap.mode, "emergency");
+  });
+});
