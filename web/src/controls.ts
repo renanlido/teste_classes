@@ -1,6 +1,6 @@
-import { sendCommand, getSnapshot, arrive } from "./api.js";
+import { sendCommand, getSnapshot, arrive, control } from "./api.js";
 import { scenarios } from "./scenarios.js";
-import type { LaneEvent, ArrivalSide, VehicleType } from "./types.js";
+import type { LaneEvent, ArrivalSide, VehicleType, LaneMode } from "./types.js";
 import type { UiState } from "./state.js";
 
 const CONTROL_EVENTS: { label: string; event: LaneEvent }[] = [
@@ -98,6 +98,28 @@ export function renderControls(host: HTMLElement): void {
   }
   host.appendChild(ctl);
 
+  const modes = document.createElement("div");
+  modes.innerHTML = '<div class="muted" style="margin-top:10px">MODOS</div>';
+  const modeBtns: { label: string; action: string; mode?: LaneMode; on?: boolean }[] = [
+    { label: "operação", action: "setMode", mode: "operation" },
+    { label: "manobra", action: "setMode", mode: "maneuver" },
+    { label: "🔑 chave on", action: "keySwitch", on: true },
+    { label: "🔑 chave off", action: "keySwitch", on: false },
+    { label: "🔧 manutenção", action: "setMode", mode: "maintenance" },
+    { label: "🛑 emergência", action: "emergency" },
+    { label: "⟲ reset emergência", action: "emergencyReset" },
+    { label: "⚠ safety trip", action: "safetyTrip" },
+    { label: "✓ safety clear", action: "safetyClear" },
+  ];
+  for (const m of modeBtns) {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = m.label;
+    b.onclick = () => void control(m.action, { mode: m.mode, on: m.on });
+    modes.appendChild(b);
+  }
+  host.appendChild(modes);
+
   const data = document.createElement("div");
   data.innerHTML = '<div class="muted" style="margin-top:10px">DADOS</div>';
   const plateVal = mkInput("placa", "84px");
@@ -159,6 +181,30 @@ export function renderActions(host: HTMLElement, s: UiState): void {
     const cancel = mkBtn("✗ Cancelar → ré", () => void sendCommand({ type: "operatorCancel" }));
     cancel.className = "btn act danger";
     host.append(document.createElement("br"), approve, cancel);
+    return;
+  }
+
+  if (s.laneState === "WaitRelease") {
+    const title = document.createElement("div");
+    title.className = "act-title";
+    title.textContent = "Aguardando liberação — a CLP não abre sozinha";
+    const sys = mkBtn("✓ Liberar (sistema)", () => void control("releaseSystem"));
+    sys.className = "btn act ok";
+    const man = mkBtn("🔘 Liberar (botoeira)", () => void control("releaseManual"));
+    man.className = "btn act";
+    host.append(title, document.createElement("br"), sys, man);
+    return;
+  }
+
+  if (s.laneState === "SafetyStop") {
+    const title = document.createElement("div");
+    title.className = "act-title";
+    title.textContent = `Parada de segurança${s.reason ? ` — ${s.reason}` : ""}`;
+    const clear = mkBtn("✓ Limpar segurança", () => void control("safetyClear"));
+    clear.className = "btn act ok";
+    const reset = mkBtn("⟲ Reset manual", () => void sendCommand({ type: "manualReset" }));
+    reset.className = "btn act";
+    host.append(title, document.createElement("br"), clear, reset);
     return;
   }
 
