@@ -30,6 +30,15 @@ flowchart LR
   E --> S
 ```
 
+### Máquina de estados dupla: CLP (físico) × código (negócio)
+
+O comportamento da pista vive em **duas máquinas de estado coordenadas**, cada uma com sua responsabilidade:
+
+- **CLP — camada física (PLC simulado: `EntrySensorPort`/`FakeClp`)** é a **fonte de verdade do estado físico**: a fila de chegadas (FIFO global entre A/B por `seq`), o **modo de operação** da pista (`operation` / `maintenance` / `maneuver` / `emergency`, precedência **Emergência > Manutenção > Manobra > Operação**) e a **segurança** (anti-esmagamento). A CLP **sequencia o início autonomamente** (puxa a próxima chegada quando ociosa, só com `safetyOk` e em `operation`), mas **nunca decide a liberação** no ponto de regra de negócio — sempre aguarda um comando explícito.
+- **Código — `LaneFlow`** é a máquina de **software**: o ciclo por-operação (estados em `states/`), as **decisões de negócio** (validação Recintos/SEV) e o **ponto de liberação** (`WaitRelease`), onde a cancela de saída só abre por **`systemRelease`** (sistema) ou **`manualRelease`** (botoeira).
+
+As duas conversam por **sinais/telemetria**: a CLP reporta chegadas (`vehicleArrived` → `entry.arrived`) e mantém modo/segurança; o `LaneFlow` consome esses sinais, roda o ciclo e devolve telemetria de estado (`lane.state`, `lane.mode`, `lane.safety`, …). Decisões registradas em **`docs/adr/`** — ADR-0001 (modelo operacional: modos, autoridade de liberação, segurança), ADR-0002 (protocolo de campo: Modbus primário, OPC-UA secundário), ADR-0003 (recuperação durável, CLP como fonte de verdade).
+
 ---
 
 ## 2. Arquitetura
@@ -45,7 +54,7 @@ flowchart TB
     ST["state.ts (reduce: telemetria → UI)"]
   end
   subgraph Server["Servidor node:http — porta 8787"]
-    API["api.ts<br/>POST /api/command · GET /api/stream (SSE) · GET /api/snapshot"]
+    API["api.ts<br/>POST /api/command · POST /api/arrive · POST /api/control · GET /api/stream (SSE) · GET /api/snapshot"]
     HUB["SseHub"]
     OBS["observing/*<br/>(decorators de telemetria)"]
     BUS["EventBus (in-memory)"]
@@ -76,7 +85,7 @@ flowchart TB
   CTRL["LaneController — adapter (event.type → use case)"]
   UC["use-cases (intenções)<br/>StartOperation · CorrectPlate · ApproveRelease · CancelOperation · ResetLane · IngestLaneSignal"]
   FLOW["LaneFlow — process manager (stateful) + states/"]
-  DS["domain services (puros) — ValidationService · EntryQueueService"]
+  DS["domain services (puros) — ValidationService"]
   ENT["entidades — Operation · Gate · Lane · Plate · Person"]
   PORTS["ports + emulações — CommandGate · Alpr · Facial · Backend · EventBus"]
   CTRL --> UC --> FLOW
@@ -107,27 +116,43 @@ stateDiagram-v2
   CarEntering --> Capture: carInside
   CarEntering --> Idle: timeout (carro desiste)
   Capture --> Validation: carAtTotem / timeout placa
-  Validation --> ReleaseExit: tudo OK
+  Validation --> WaitRelease: tudo OK
   Validation --> Intervention: trava de negócio
+  WaitRelease --> ReleaseExit: systemRelease / manualRelease
   ReleaseExit --> CarLeaving: endOperation
-  ReleaseExit --> Intervention: timeout (parado na saída)
+  ReleaseExit --> Blocked: timeout (parado na saída)
   CarLeaving --> Finalize: carLeft
-  CarLeaving --> Intervention: timeout (preso)
+  CarLeaving --> Blocked: timeout (preso)
+  Blocked --> Finalize: carLeft (guarda remove)
   Finalize --> Idle: auto
   Intervention --> Validation: correctPlate (re-valida)
-  Intervention --> ReleaseExit: operatorApprove (override)
+  Intervention --> WaitRelease: operatorApprove (override)
   Intervention --> Maneuver: operatorCancel
   Intervention --> Finalize: operatorAbort
   Maneuver --> Finalize: carReversed (ré) / carLeft (frente)
   Maneuver --> Idle: manualReset
   Failure --> Idle: manualReset
+  WaitEntry --> SafetyStop: safetyTrip (qualquer ciclo ativo)
+  SafetyStop --> Idle: safetyClear + manualReset
 ```
 
-Dois baldes de erro: **técnico → `Failure`** (cancela não abre, etc.; via `fail`/watchdog) e
-**negócio → `Intervention`** (regras reprovam). A intervenção **nunca trava**: o operador corrige a
-placa (re-valida via `Validation`), libera no override, ou **cancela → `Maneuver`** (modo manobra; nesta
-lane o carro sai **de ré** pela cancela de entrada do lado — `maneuverMode` configurável). De
-`Failure`/`Intervention`/`Maneuver` nunca pula direto pra nova operação — sempre passa por `Idle`.
+**Idle nunca abre sozinho no negócio.** Após a validação aprovar (ou o operador liberar no override),
+a pista entra em **`WaitRelease`** e a cancela de saída só abre por **comando explícito**:
+`systemRelease` (sistema/backend) ou `manualRelease` (botoeira). A CLP nunca decide a liberação.
+
+Baldes de parada: **técnico → `Failure`** (cancela não abre; via `fail`/watchdog), **negócio →
+`Intervention`** (regras reprovam), **obstrução → `Blocked`** (carro parado na saída, sem ré, sem ação
+automática — guarda remove) e **segurança → `SafetyStop`** (anti-esmagamento durante o ciclo: fecha
+cancelas; `manualReset` só após `safetyClear` — sem religamento automático, ISO 14118). A intervenção
+**nunca trava**: o operador corrige a placa (re-valida via `Validation`), libera no override (→
+`WaitRelease`), ou **cancela → `Maneuver`** (modo manobra; o carro sai **de ré** pela cancela de entrada
+do lado — `maneuverMode` configurável). De `Failure`/`Intervention`/`Maneuver`/`Blocked`/`SafetyStop`
+nunca pula direto pra nova operação — sempre passa por `Idle`.
+
+**Modos (ortogonais ao ciclo, na CLP).** Acima do ciclo por-operação há a camada de **modos**
+(`operation` / `maintenance` / `maneuver` / `emergency`) com precedência **Emergência > Manutenção >
+Manobra > Operação**: só em `operation` o ciclo roda; manutenção exige chave física; emergência (botoeira)
+abre tudo e congela o ciclo; sem religamento automático. Ver ADR-0001.
 
 ### Regras de validação (domain `ValidationService`)
 
@@ -217,6 +242,11 @@ sequenceDiagram
 | `operation.finalized` | Finalize | `{ id, side, durationMs }` |
 | `operator.intervention` | Intervention | `{ operationId, reason }` |
 | `lane.failure` | Failure | `{ operationId, reason }` |
+| `entry.arrived` | ObservingClp | `{ side, vehicleType, seq }` |
+| `lane.mode` / `mode.changed` | LaneFlow | `{ mode }` |
+| `safety.status` | LaneFlow | `{ safetyOk }` |
+| `release.waiting` | WaitRelease | `{ operationId }` |
+| `lane.safety` | SafetyStop | `{ operationId, reason }` |
 
 Único toque no domínio para telemetria: `LaneFlow` publica `lane.state` e `watchdog.*` (via
 `deps.bus?.publish`). O resto vem dos decorators, que ficam fora do domínio (`server/observing/`).
@@ -227,15 +257,16 @@ sequenceDiagram
 
 ```
 src/                  domínio + flow + aplicação (backend puro, zero-dep)
-  domain/             Operation, Gate, Lane, LaneRegistry, ValidationService, EntryQueueService, types
-  flow/               LaneFlow (motor) + LaneTwoEntriesOneExit (topologia) + states/ (12 estados, incl. Maneuver)
+  domain/lane/        Lane (raiz) + LaneFlow (motor) + states/ (Idle, WaitEntry, …, WaitRelease, SafetyStop, Maneuver, Blocked, Failure)
+                      + LaneTopology (TwoEntriesOneExit/OneEntryOneExit) + LaneMode (modos) + Operation, Gate
+  domain/             LaneRegistry, ValidationService, types
   application/        resolveLane + use-cases/ (intenções: StartOperation, CorrectPlate, ApproveRelease,
                       CancelOperation, ResetLane, IngestLaneSignal)
-  integrations/       interfaces (ports) + emulações em memória (Fake*)
+  integrations/       ports + emulações em memória (Fake*) — inclui EntrySensorPort/FakeClp (a CLP simulada)
   LaneController.ts   adapter fino: event.type → use case
   index.ts            demo de linha de comando (1 ciclo, imprime estados)
 server/               servidor node:http + SSE
-  observing/          decorators de telemetria
+  observing/          decorators de telemetria (inclui ObservingClp)
   sse.ts api.ts index.ts tsconfig.json
 web/                  front Vite + TypeScript
   src/                main, scene, panels, timeline, controls, state, scenarios, api, types, styles
@@ -243,8 +274,9 @@ docs/superpowers/     specs e planos de implementação
 ```
 
 A pilha de chamadas: `LaneController` (adapter) → `application/use-cases` (intenções) → `LaneFlow`
-(process manager, stateful) → `domain` services puros (`ValidationService`/`EntryQueueService`) +
-entidades + ports (infra emulada).
+(process manager, stateful) → `domain` services puros (`ValidationService`) + entidades + ports (infra
+emulada). Os comandos de **modo/liberação/segurança** entram por `POST /api/control` chamando as
+intenções da `Lane` diretamente (não passam pelo `LaneController`).
 
 ---
 
@@ -278,13 +310,19 @@ e **Controles**:
 
 - **Cenários**: `Carro OK` (2 placas), `Moto OK` (1 traseira), `Carreta OK` (cavalo+carreta, 3 placas),
   `Placa não detectada` (trava → corrigir), `Cancelar → ré` (trava → manobra).
+- **Chegadas (sensores/CLP)**: botões `chegada A`/`chegada B` (tipo aleatório) e **auto-sim** que
+  emite chegadas periódicas; a pista puxa a próxima da fila FIFO sozinha.
+- **Modos**: `operação`/`manobra` (supervisório), `🔑 chave on/off`, `🔧 manutenção`, `🛑 emergência`,
+  `⟲ reset emergência`, `⚠ safety trip`/`✓ safety clear`. O badge na cena mostra o modo atual.
 - **Controle manual**: um botão por evento.
 - **Dados**: `plateRead`, `personDetected`, `weightMeasured`.
 - **Painel de ação** (a intervenção nunca trava):
   - **Intervention**: digitar/escolher a placa (do registro) → **Corrigir e re-validar**; **Liberar
     (override)**; **Cancelar → ré** (modo manobra).
+  - **WaitRelease**: **Liberar (sistema)** ou **Liberar (botoeira)** — a saída só abre por comando.
   - **Maneuver**: **Confirmar saída de ré** (o carro recua pela cancela de entrada do lado).
-  - **Failure**: **Reset manual**.
+  - **SafetyStop**: **Limpar segurança** e depois **Reset manual** (sem religamento automático).
+  - **Failure**: **Reset manual**. **Blocked**: **Veículo removido pelo guarda**.
 
 **Tipos de veículo**: a classificação vem por placa (`vehicleType`). Carro/caminhão = frontal+traseira;
 carreta = cavalo (frontal+traseira) + carreta (traseira); moto = só traseira. A placa da operação é a de
@@ -325,7 +363,11 @@ npx tsc --noEmit -p web/tsconfig.json             # typecheck do front
 
 ## 9. Documentação
 
+- **Decisões de arquitetura (ADRs)**: `docs/adr/` — 0001 modelo operacional (modos/liberação/segurança),
+  0002 protocolo de campo (Modbus/OPC-UA), 0003 recuperação durável.
 - Spec do backend: `docs/superpowers/specs/2026-05-29-laneflow-design.md`
 - Spec do front: `docs/superpowers/specs/2026-05-29-laneflow-front-design.md`
 - Spec veículos/correção: `docs/superpowers/specs/2026-05-29-laneflow-vehicles-correction-design.md`
+- Spec CLP / detecção de lado: `docs/superpowers/specs/2026-05-29-clp-side-detection-design.md`
+- Spec modos + release-gating: `docs/superpowers/specs/2026-05-31-lane-operating-modes-design.md`
 - Planos de implementação: `docs/superpowers/plans/`
