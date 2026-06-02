@@ -2,6 +2,8 @@ export type PlatePosition = "front" | "rear";
 export type VehicleUnit = "tractor" | "trailer";
 export type VehicleType = "car" | "truck" | "rig" | "motorcycle";
 
+export type LaneMode = "operation" | "maintenance" | "maneuver" | "emergency";
+
 export interface Plate {
   value: string;
   confidence: number;
