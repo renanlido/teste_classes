@@ -133,6 +133,8 @@ next — draining the CLP FIFO one operation at a time.
 
 ## Real adapter path (Siemens) — documented, NOT built
 
+> **Atualização (ADR-0002):** o protocolo de campo foi revisado para **Modbus primário, OPC-UA secundário**; o caminho `snap7`/S7comm descrito abaixo foi **descartado**. Mantido como registro histórico. Ver `docs/adr/0002-protocolo-plc-modbus-primario-opcua-secundario.md`.
+
 This project is a **pure simulator: no real CLP/PLC, no native dependency, no
 hardware**. `FakeClp` is the only implementation we build and run. The section
 below documents how a real Siemens adapter would later drop in behind
@@ -172,4 +174,4 @@ Siemens 109737901 (OPC UA on S7-1500).
 - Building any real PLC adapter, adding `node-snap7`/`node-opcua`, or any native
   dependency. The runtime is fully simulated via `FakeClp`.
 - Multiple lanes/eclusas.
-- Persisting the queue across restarts.
+- Persisting the queue across restarts. **(Revertido — ver ADR-0003: recuperação durável / CLP como fonte de verdade.)**
