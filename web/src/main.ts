@@ -25,6 +25,11 @@ function resync(): void {
   getSnapshot()
     .then((snap) => {
       state = reduce(state, { topic: "lane.state", payload: snap, ts: Date.now() });
+      if (snap.mode) {
+        const modeMsg = { topic: "lane.mode", payload: { mode: snap.mode }, ts: Date.now() };
+        state = reduce(state, modeMsg);
+        scene.apply(modeMsg);
+      }
       render();
     })
     .catch(() => undefined);
