@@ -6,6 +6,7 @@ import { CarLeaving } from "./CarLeaving.js";
 import { LaneFlow } from "../LaneFlow.js";
 import { Operation } from "../Operation.js";
 import { Gate } from "../Gate.js";
+import { FakeClp } from "../../../integrations/FakeClp.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
 import type { CommandGate } from "../../../integrations/CommandGate.js";
@@ -35,6 +36,7 @@ function deps(okValidation: boolean, reason?: string): FlowDeps {
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish() {}, subscribe() {} },
     validation: { async evaluate() { return okValidation ? { ok: true } : { ok: false, reason: reason ?? "block" }; } } as unknown as FlowDeps["validation"],
+    clp: new FakeClp(),
   };
 }
 
@@ -42,6 +44,8 @@ test("Validation ok -> ReleaseExit", async () => {
   const flow = new LaneFlow(cfg(), deps(true));
   flow.operation = new Operation("A");
   await flow.start(new Validation());
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
   assert.equal(flow.getState(), "ReleaseExit");
 });
 
@@ -79,9 +83,12 @@ test("slow validation transitions exactly once to ReleaseExit", async () => {
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish() {}, subscribe() {} },
     validation: { async evaluate() { await new Promise((r) => setTimeout(r, 80)); return { ok: true }; } },
+    clp: new FakeClp(),
   } as unknown as FlowDeps;
   const flow = new LaneFlow(cfg(), d);
   flow.operation = new Operation("A");
   await flow.start(new Validation());
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
   assert.equal(flow.getState(), "ReleaseExit");
 });

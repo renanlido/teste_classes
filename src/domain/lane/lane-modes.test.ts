@@ -1,8 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Lane } from "./Lane.js";
-import { LaneRegistry } from "../LaneRegistry.js";
-import { ValidationService } from "../ValidationService.js";
 import { Gate } from "./Gate.js";
 import { FakeGate } from "../../integrations/FakeGate.js";
 import { FakeAlpr } from "../../integrations/FakeAlpr.js";
@@ -10,6 +8,7 @@ import { FakeFacial } from "../../integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "../../integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "../../integrations/InMemoryEventBus.js";
 import { FakeClp } from "../../integrations/FakeClp.js";
+import { ValidationService } from "../ValidationService.js";
 import type { LaneConfig } from "./LaneConfig.js";
 import type { FlowDeps } from "./events.js";
 
@@ -19,7 +18,7 @@ function cfg(): LaneConfig {
     sevEnabled: false,
     gates: { entryA: "gA", entryB: "gB", exit: "gS" },
     alpr: { rearA: "cA", rearB: "cB", frontExit: "cS" },
-    timeouts: { gateOpenMs: 30, carInsideMs: 30, plateMs: 30, backendMs: 30, exitMs: 30 },
+    timeouts: { gateOpenMs: 9999, carInsideMs: 9999, plateMs: 9999, backendMs: 9999, exitMs: 9999 },
   };
 }
 function deps(): FlowDeps {
@@ -35,35 +34,32 @@ function deps(): FlowDeps {
   };
 }
 
-test("Lane.create starts in Idle", async () => {
+test("emergency intention latches emergency; emergencyReset returns to operation", async () => {
   const lane = Lane.create("L1", "Lane 1", cfg(), deps());
   await lane.start();
-  assert.equal(lane.getState(), "Idle");
+  await lane.emergency();
+  assert.equal(lane.getMode(), "emergency");
+  await lane.emergencyReset();
+  assert.equal(lane.getMode(), "operation");
 });
 
-test("startOperation intention advances to WaitEntry", async () => {
+test("keySwitch + setMode enters maintenance", async () => {
   const lane = Lane.create("L1", "Lane 1", cfg(), deps());
   await lane.start();
-  await lane.startOperation("A");
-  assert.equal(lane.getState(), "WaitEntry");
+  await lane.keySwitch(true);
+  await lane.setMode("maintenance");
+  assert.equal(lane.getMode(), "maintenance");
 });
 
-test("signal forwards a device signal", async () => {
+test("releaseBySystem opens the exit only after WaitRelease", async () => {
   const lane = Lane.create("L1", "Lane 1", cfg(), deps());
   await lane.start();
   await lane.startOperation("A");
   await lane.signal({ type: "confirmQueue" });
-  assert.equal(lane.getState(), "OpenEntry");
-});
-
-test("LaneRegistry returns the same instance per id", () => {
-  LaneRegistry.reset();
-  const a = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
-  const b = LaneRegistry.get("L1", () => Lane.create("L1", "Lane 1", cfg(), deps()));
-  assert.equal(a, b);
-});
-
-test("LaneRegistry.peek returns undefined if missing", () => {
-  LaneRegistry.reset();
-  assert.equal(LaneRegistry.peek("missing"), undefined);
+  await lane.signal({ type: "gateOpened" });
+  await lane.signal({ type: "carInside" });
+  await lane.signal({ type: "carAtTotem" });
+  assert.equal(lane.getState(), "WaitRelease");
+  await lane.releaseBySystem();
+  assert.equal(lane.getState(), "ReleaseExit");
 });

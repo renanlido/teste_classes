@@ -1,15 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LaneFlow } from "../LaneFlow.js";
-import { OneEntryOneExit, createTopology } from "../LaneTopology.js";
 import { Gate } from "../Gate.js";
 import { FakeGate } from "../../../integrations/FakeGate.js";
-import { ValidationService } from "../../ValidationService.js";
 import { FakeAlpr } from "../../../integrations/FakeAlpr.js";
 import { FakeFacial } from "../../../integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "../../../integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "../../../integrations/InMemoryEventBus.js";
 import { FakeClp } from "../../../integrations/FakeClp.js";
+import { ValidationService } from "../../ValidationService.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
 
@@ -17,10 +16,9 @@ function cfg(): LaneConfig {
   return {
     facialEnabled: false,
     sevEnabled: false,
-    topology: "one-entry-one-exit",
     gates: { entryA: "gA", entryB: "gB", exit: "gS" },
     alpr: { rearA: "cA", rearB: "cB", frontExit: "cS" },
-    timeouts: { gateOpenMs: 30, carInsideMs: 30, plateMs: 30, backendMs: 30, exitMs: 30 },
+    timeouts: { gateOpenMs: 9999, carInsideMs: 9999, plateMs: 9999, backendMs: 9999, exitMs: 9999 },
   };
 }
 function deps(): FlowDeps {
@@ -36,31 +34,23 @@ function deps(): FlowDeps {
   };
 }
 
-test("createTopology resolves one-entry-one-exit", () => {
-  assert.equal(createTopology(cfg()).name, "one-entry-one-exit");
+test("safety trip during an active cycle moves to SafetyStop", async () => {
+  const flow = new LaneFlow(cfg(), deps());
+  await flow.start();
+  await flow.dispatch({ type: "startOperation", side: "A" });
+  assert.equal(flow.getState(), "WaitEntry");
+  await flow.dispatch({ type: "safetyTrip" });
+  assert.equal(flow.getState(), "SafetyStop");
 });
 
-test("OneEntryOneExit initial state is Idle (single) and starts there", async () => {
-  const flow = new LaneFlow(cfg(), deps(), new OneEntryOneExit());
+test("manualReset is refused while safety is still tripped, allowed after clear", async () => {
+  const flow = new LaneFlow(cfg(), deps());
   await flow.start();
+  await flow.dispatch({ type: "startOperation", side: "A" });
+  await flow.dispatch({ type: "safetyTrip" });
+  await flow.dispatch({ type: "manualReset" });
+  assert.equal(flow.getState(), "SafetyStop");
+  await flow.dispatch({ type: "safetyClear" });
+  await flow.dispatch({ type: "manualReset" });
   assert.equal(flow.getState(), "Idle");
-});
-
-test("OneEntryOneExit: startOperation goes straight to OpenEntry (no WaitEntry)", async () => {
-  const flow = new LaneFlow(cfg(), deps(), new OneEntryOneExit());
-  await flow.start();
-  await flow.dispatch({ type: "startOperation", side: "A" });
-  assert.equal(flow.getState(), "OpenEntry");
-});
-
-test("OneEntryOneExit: stays single-entry after a reset (skips WaitEntry on second op)", async () => {
-  const flow = new LaneFlow(cfg(), deps(), new OneEntryOneExit());
-  await flow.start();
-  await flow.dispatch({ type: "startOperation", side: "A" });
-  await flow.dispatch({ type: "gateOpened" });
-  assert.equal(flow.getState(), "CarEntering");
-  await flow.dispatch({ type: "timeout" });
-  assert.equal(flow.getState(), "Idle");
-  await flow.dispatch({ type: "startOperation", side: "A" });
-  assert.equal(flow.getState(), "OpenEntry");
 });

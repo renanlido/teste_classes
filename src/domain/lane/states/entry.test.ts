@@ -7,6 +7,7 @@ import { CarEntering } from "./CarEntering.js";
 import { LaneFlow } from "../LaneFlow.js";
 import { Gate } from "../Gate.js";
 import { FakeGate } from "../../../integrations/FakeGate.js";
+import { FakeClp } from "../../../integrations/FakeClp.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
 import type { CommandGate } from "../../../integrations/CommandGate.js";
@@ -38,6 +39,7 @@ function deps(): FlowDeps {
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish() {}, subscribe() {} },
     validation: { async evaluate() { return { ok: true }; } } as unknown as FlowDeps["validation"],
+    clp: new FakeClp(),
   };
 }
 
@@ -97,6 +99,7 @@ test("CarEntering timeout closes the gate and returns to Idle", async () => {
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish() {}, subscribe() {} },
     validation: { async evaluate() { return { ok: true }; } },
+    clp: new FakeClp(),
   } as unknown as FlowDeps;
   const flow = new LaneFlow(cfg(), d);
   await flow.start(new Idle());

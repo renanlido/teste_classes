@@ -57,3 +57,19 @@ test("vehicleType defaults to car when no plate", () => {
   const op = new Operation("A");
   assert.equal(op.vehicleType, "car");
 });
+
+test("vehicleType uses the seeded arrival type when there is no plate", () => {
+  const op = new Operation("A", "rig");
+  assert.equal(op.vehicleType, "rig");
+});
+
+test("vehicleType prefers the plate type over the seeded type", () => {
+  const op = new Operation("A", "rig");
+  op.plates.push({ value: "ABC1D23", confidence: 0.9, position: "rear", vehicleType: "motorcycle" });
+  assert.equal(op.vehicleType, "motorcycle");
+});
+
+test("vehicleType defaults to car when neither seed nor plate is given", () => {
+  const op = new Operation("A");
+  assert.equal(op.vehicleType, "car");
+});

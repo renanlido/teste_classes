@@ -5,6 +5,8 @@ import type { LaneState, LaneFlowApi } from "./LaneStateBase.js";
 import type { Operation } from "./Operation.js";
 import { TwoEntriesOneExit } from "./LaneTopology.js";
 import type { LaneTopology } from "./LaneTopology.js";
+import { SafetyStop } from "./states/SafetyStop.js";
+import { canEnterMode, type LaneMode, type ModeContext } from "./LaneMode.js";
 
 export abstract class LaneFlowBase {
   abstract getFlow(): { state: string; operationId: string | null };
@@ -19,6 +21,10 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
   private watchdog: ReturnType<typeof setTimeout> | null = null;
   private watchdogGen = 0;
   private pendingFail: unknown = null;
+  private modeValue: LaneMode = "operation";
+  private emergencyLatched = false;
+  private maintenanceKey = false;
+  private safetyOkValue = true;
 
   constructor(
     readonly cfg: LaneConfig,
@@ -39,15 +45,88 @@ export class LaneFlow extends LaneFlowBase implements LaneFlowApi {
     return { state: this.getState(), operationId: this.operation?.id ?? null };
   }
 
+  get mode(): LaneMode {
+    return this.modeValue;
+  }
+
+  get safetyOk(): boolean {
+    return this.safetyOkValue;
+  }
+
+  private modeCtx(): ModeContext {
+    return {
+      emergencyLatched: this.emergencyLatched,
+      hasMaintenanceKey: this.maintenanceKey,
+      safetyOk: this.safetyOkValue,
+    };
+  }
+
+  private async setMode(target: LaneMode): Promise<void> {
+    if (!canEnterMode(this.modeValue, target, this.modeCtx())) return;
+    this.modeValue = target;
+    this.deps.bus?.publish("lane.mode", { mode: target });
+    this.deps.bus?.publish("mode.changed", { mode: target });
+    if (target !== "operation") this.clearWatchdog();
+    if (target === "emergency") await this.openAllGates();
+  }
+
+  private async openAllGates(): Promise<void> {
+    await this.deps.gates.A.open();
+    await this.deps.gates.B.open();
+    await this.deps.gates.exit.open();
+  }
+
+  private async handleModeEvent(ev: FlowEvent): Promise<boolean> {
+    if (ev.type === "keySwitch") {
+      this.maintenanceKey = ev.on;
+      return true;
+    }
+    if (ev.type === "emergencyButton") {
+      this.emergencyLatched = true;
+      await this.setMode("emergency");
+      return true;
+    }
+    if (ev.type === "emergencyReset") {
+      if (this.modeValue !== "emergency") return true;
+      this.emergencyLatched = false;
+      this.modeValue = "operation";
+      this.deps.bus?.publish("lane.mode", { mode: "operation" });
+      this.deps.bus?.publish("mode.changed", { mode: "operation" });
+      await this.transitionTo(this.topology.initialState());
+      return true;
+    }
+    if (ev.type === "setMode") {
+      await this.setMode(ev.mode);
+      return true;
+    }
+    if (ev.type === "safetyTrip") {
+      this.safetyOkValue = false;
+      this.deps.bus?.publish("safety.status", { safetyOk: false });
+      if (this.modeValue === "operation" && this.operation && this.getState() !== "SafetyStop") {
+        await this.transitionTo(new SafetyStop("anti-crush"));
+      }
+      return true;
+    }
+    if (ev.type === "safetyClear") {
+      this.safetyOkValue = true;
+      this.deps.bus?.publish("safety.status", { safetyOk: true });
+      return true;
+    }
+    return false;
+  }
+
   async start(initialState: LaneState = this.topology.initialState()): Promise<void> {
     await this.runOnEnter(initialState);
   }
 
   async dispatch(ev: FlowEvent): Promise<void> {
+    if (await this.handleModeEvent(ev)) return;
     if ((DATA_EVENTS as readonly string[]).includes(ev.type)) {
       this.record(ev);
       return;
     }
+    if (this.modeValue !== "operation") return;
+    if (!this.safetyOkValue && (ev.type === "startOperation" || ev.type === "vehicleArrived")) return;
     if (!this.state) return;
     const next = this.state.handle(ev, this);
     if (next) {

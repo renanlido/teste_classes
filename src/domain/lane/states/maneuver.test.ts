@@ -6,6 +6,7 @@ import { LaneFlow } from "../LaneFlow.js";
 import { Operation } from "../Operation.js";
 import { Gate } from "../Gate.js";
 import { FakeGate } from "../../../integrations/FakeGate.js";
+import { FakeClp } from "../../../integrations/FakeClp.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
 import type { CommandGate } from "../../../integrations/CommandGate.js";
@@ -37,6 +38,7 @@ function deps(okValidation = true, reason?: string): FlowDeps {
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish() {}, subscribe() {} },
     validation: { async evaluate() { return okValidation ? { ok: true } : { ok: false, reason: reason ?? "block" }; } } as unknown as FlowDeps["validation"],
+    clp: new FakeClp(),
   };
 }
 
@@ -54,6 +56,8 @@ test("Intervention correctPlate pushes a plate and re-validates -> ReleaseExit",
   await flow.dispatch({ type: "correctPlate", value: "ABC1D23" });
   assert.equal(flow.operation?.plate?.value, "ABC1D23");
   assert.equal(flow.operation?.plate?.corrected, true);
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
   assert.equal(flow.getState(), "ReleaseExit");
 });
 

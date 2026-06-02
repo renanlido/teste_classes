@@ -11,6 +11,14 @@ export interface Plate {
   corrected?: boolean;
 }
 
+export type ArrivalSide = "A" | "B";
+
+export interface Arrival {
+  side: ArrivalSide;
+  vehicleType: VehicleType;
+  seq: number;
+}
+
 export interface TelemetryMsg {
   topic: string;
   payload: Record<string, unknown>;

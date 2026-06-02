@@ -5,6 +5,7 @@ import { Failure } from "./states/Failure.js";
 import type { LaneConfig } from "./LaneConfig.js";
 import type { FlowDeps, DeviceSignal } from "./events.js";
 import type { Side } from "../types.js";
+import type { LaneMode } from "./LaneMode.js";
 
 export class Lane extends LaneBase {
   private constructor(
@@ -51,6 +52,42 @@ export class Lane extends LaneBase {
 
   async signal(s: DeviceSignal): Promise<void> {
     await this.flow.dispatch(s);
+  }
+
+  async setMode(mode: LaneMode): Promise<void> {
+    await this.flow.dispatch({ type: "setMode", mode });
+  }
+
+  async keySwitch(on: boolean): Promise<void> {
+    await this.flow.dispatch({ type: "keySwitch", on });
+  }
+
+  async emergency(): Promise<void> {
+    await this.flow.dispatch({ type: "emergencyButton" });
+  }
+
+  async emergencyReset(): Promise<void> {
+    await this.flow.dispatch({ type: "emergencyReset" });
+  }
+
+  async releaseBySystem(): Promise<void> {
+    await this.flow.dispatch({ type: "systemRelease" });
+  }
+
+  async releaseManual(): Promise<void> {
+    await this.flow.dispatch({ type: "manualRelease" });
+  }
+
+  async safetyTrip(): Promise<void> {
+    await this.flow.dispatch({ type: "safetyTrip" });
+  }
+
+  async safetyClear(): Promise<void> {
+    await this.flow.dispatch({ type: "safetyClear" });
+  }
+
+  getMode(): LaneMode {
+    return this.flow.mode;
   }
 
   getState(): string {

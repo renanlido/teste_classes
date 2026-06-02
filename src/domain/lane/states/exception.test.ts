@@ -5,6 +5,7 @@ import { Failure } from "./Failure.js";
 import { LaneFlow } from "../LaneFlow.js";
 import { Operation } from "../Operation.js";
 import { Gate } from "../Gate.js";
+import { FakeClp } from "../../../integrations/FakeClp.js";
 import type { LaneConfig } from "../LaneConfig.js";
 import type { FlowDeps } from "../events.js";
 import type { CommandGate } from "../../../integrations/CommandGate.js";
@@ -22,7 +23,7 @@ function gate(): CommandGate {
   return {
     async openGate() { return { type: "success", message: "ok" }; },
     async closeGate() { return true; },
-    async queryGateState() { return "closed"; },
+    async queryGateState() { return "open"; },
   };
 }
 function deps(): { d: FlowDeps; published: { topic: string; payload: unknown }[] } {
@@ -35,16 +36,20 @@ function deps(): { d: FlowDeps; published: { topic: string; payload: unknown }[]
     backend: { async booking() { return { valid: true }; }, async plateRegistered() { return true; }, async sev() { return { ok: true }; } },
     bus: { publish(topic, payload) { published.push({ topic, payload }); }, subscribe() {} },
     validation: { async evaluate() { return { ok: true }; } } as unknown as FlowDeps["validation"],
+    clp: new FakeClp(),
   };
   return { d, published };
 }
 
-test("Intervention operatorApprove -> ReleaseExit", () => {
+test("Intervention operatorApprove -> ReleaseExit", async () => {
   const { d } = deps();
   const flow = new LaneFlow(cfg(), d);
   flow.operation = new Operation("A");
-  const next = new Intervention("no SEV").handle({ type: "operatorApprove" }, flow);
-  assert.equal(next?.name, "ReleaseExit");
+  await flow.start(new Intervention("no SEV"));
+  await flow.dispatch({ type: "operatorApprove" });
+  assert.equal(flow.getState(), "WaitRelease");
+  await flow.dispatch({ type: "systemRelease" });
+  assert.equal(flow.getState(), "ReleaseExit");
 });
 
 test("Intervention operatorAbort -> Finalize", () => {
@@ -75,4 +80,17 @@ test("Failure publishes alarm on onEnter", async () => {
   const flow = new LaneFlow(cfg(), d);
   await flow.start(new Failure("gate stuck"));
   assert.equal(published.some((p) => p.topic === "lane.failure"), true);
+});
+
+test("manualReset from Failure auto-starts the next queued CLP arrival", async () => {
+  const clp = new FakeClp();
+  const { d } = deps();
+  d.clp = clp;
+  const flow = new LaneFlow(cfg(), d);
+  await flow.start(new Failure("gate stuck"));
+  assert.equal(flow.getState(), "Failure");
+  clp.arrive("A", "car");
+  await flow.dispatch({ type: "manualReset" });
+  assert.equal(flow.getState(), "WaitEntry");
+  assert.ok(flow.getFlow().operationId);
 });

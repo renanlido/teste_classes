@@ -12,6 +12,7 @@ import { FakeAlpr } from "../../integrations/FakeAlpr.js";
 import { FakeFacial } from "../../integrations/FakeFacial.js";
 import { FakeBackendRecintos } from "../../integrations/FakeBackendRecintos.js";
 import { InMemoryEventBus } from "../../integrations/InMemoryEventBus.js";
+import { FakeClp } from "../../integrations/FakeClp.js";
 import type { LaneConfig } from "../../domain/lane/LaneConfig.js";
 import type { FlowDeps } from "../../domain/lane/events.js";
 
@@ -33,6 +34,7 @@ function deps(): FlowDeps {
     backend: new FakeBackendRecintos({ bookings: {}, registeredPlates: {}, sev: {} }),
     bus: new InMemoryEventBus(),
     validation: new ValidationService(),
+    clp: new FakeClp(),
   };
 }
 async function freshLane(): Promise<Lane> {

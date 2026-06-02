@@ -61,14 +61,23 @@ export class Scene {
 
   private fillQueue(side: "A" | "B"): void {
     const st = side === "A" ? this.A : this.B;
-    const y = side === "A" ? LANE_A : LANE_B;
     for (const car of st.cars) car.remove();
     st.cars = [];
-    for (const x of slots) {
-      const car = this.el("car", { left: `${x}px`, top: `${y}px` }, "🚗");
-      if (side === "B") car.style.filter = "hue-rotate(180deg)";
-      st.cars.push(car);
-    }
+  }
+
+  private addArrival(side: "A" | "B", vehicleType: string): void {
+    const st = side === "A" ? this.A : this.B;
+    const y = side === "A" ? LANE_A : LANE_B;
+    if (st.cars.length >= slots.length) return;
+    const car = this.el("car", { top: `${y}px` }, VEHICLE_EMOJI[vehicleType] ?? "🚗");
+    if (side === "B") car.style.filter = "hue-rotate(180deg)";
+    st.cars.push(car);
+    this.layoutQueue(side);
+  }
+
+  private layoutQueue(side: "A" | "B"): void {
+    const st = side === "A" ? this.A : this.B;
+    st.cars.forEach((c, i) => (c.style.left = `${slots[i] ?? 0}px`));
   }
 
   apply(msg: TelemetryMsg): void {
@@ -118,6 +127,10 @@ export class Scene {
       this.reverseActive();
       return;
     }
+    if (msg.topic === "entry.arrived") {
+      this.addArrival(String(p.side) === "B" ? "B" : "A", String(p.vehicleType));
+      return;
+    }
     if (msg.topic === "lane.state") {
       this.onState(String(p.state));
     }
@@ -130,7 +143,7 @@ export class Scene {
     if (state === "CarEntering" && side) {
       const car = st.cars.shift();
       st.active = car ?? null;
-      st.cars.forEach((c, i) => (c.style.left = `${slots[i]}px`));
+      this.layoutQueue(side);
       if (st.active) {
         st.active.style.left = "400px";
         st.active.style.top = `${y}px`;
