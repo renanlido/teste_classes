@@ -1,8 +1,9 @@
-import type { TelemetryMsg, Plate, VehicleType } from "./types.js";
+import type { TelemetryMsg, Plate, VehicleType, LaneMode } from "./types.js";
 
 export interface UiState {
   laneState: string;
   operationId: string | null;
+  mode: LaneMode;
   gates: { A: "open" | "closed"; B: "open" | "closed"; exit: "open" | "closed" };
   alpr: { rearA: boolean; rearB: boolean; front: boolean };
   facial: { active: boolean };
@@ -22,6 +23,7 @@ export function initialState(): UiState {
   return {
     laneState: "Idle",
     operationId: null,
+    mode: "operation",
     gates: { A: "closed", B: "closed", exit: "closed" },
     alpr: { rearA: false, rearB: false, front: false },
     facial: { active: false },
@@ -132,6 +134,16 @@ export function reduce(state: UiState, msg: TelemetryMsg): UiState {
     case "maneuver":
       s.maneuver = { mode: String(p.mode), side: String(p.side) };
       break;
+    case "lane.mode":
+    case "mode.changed":
+      if (p.mode) s.mode = String(p.mode) as LaneMode;
+      break;
+    case "release.waiting":
+      s.reason = "aguardando liberação";
+      break;
+    case "lane.safety":
+      s.reason = String(p.reason);
+      break;
     case "operator.intervention":
     case "lane.failure":
       s.reason = String(p.reason);
@@ -163,6 +175,13 @@ function describe(msg: TelemetryMsg): string {
       return `intervention: ${String(p.reason)}`;
     case "lane.failure":
       return `failure: ${String(p.reason)}`;
+    case "lane.mode":
+    case "mode.changed":
+      return `mode -> ${String(p.mode)}`;
+    case "lane.safety":
+      return `safety stop: ${String(p.reason)}`;
+    case "release.waiting":
+      return "waiting for release";
     default:
       return msg.topic;
   }
